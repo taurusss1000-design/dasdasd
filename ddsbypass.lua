@@ -987,38 +987,51 @@ end
 
 local function _tweenVehicle(vehicle, targetCFrame, duration)
     local TweenService = game:GetService("TweenService")
-    local RunService   = game:GetService("RunService")
-    local mainPart = vehicle.PrimaryPart
+    
+    local mainPart = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
     if not mainPart then return end
+    
     local parts = {}
+    local originalAnchored = {}
+    local tempWelds = {}
+    
     for _, part in ipairs(vehicle:GetDescendants()) do
-        if part:IsA("BasePart") then table.insert(parts, part) end
+        if part:IsA("BasePart") then
+            table.insert(parts, part)
+            originalAnchored[part] = part.Anchored
+        end
     end
-    for _, part in ipairs(parts) do part.Anchored = true end
-    local mainCFrame  = mainPart.CFrame
-    local partOffsets = {}
+    
+    -- Anchor mainPart, unanchor sisanya dan pasang WeldConstraint sementara
+    mainPart.Anchored = true
     for _, part in ipairs(parts) do
-        if part ~= mainPart then partOffsets[part] = mainCFrame:ToObjectSpace(part.CFrame) end
+        if part ~= mainPart then
+            part.Anchored = false
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = mainPart
+            weld.Part1 = part
+            weld.Parent = mainPart
+            table.insert(tempWelds, weld)
+        end
     end
+    
     local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
     local tween = TweenService:Create(mainPart, tweenInfo, { CFrame = targetCFrame })
     tween:Play()
-    local conn = RunService.Heartbeat:Connect(function()
-        local currentMain = mainPart.CFrame
-        for _, part in ipairs(parts) do
-            if part ~= mainPart and partOffsets[part] then
-                part.CFrame = currentMain:ToWorldSpace(partOffsets[part])
-            end
-        end
-    end)
     tween.Completed:Wait()
-    conn:Disconnect()
+    
+    -- Hapus weld sementara
+    for _, weld in ipairs(tempWelds) do
+        weld:Destroy()
+    end
+    
+    -- Kembalikan state awal dan amankan physics
     for _, part in ipairs(parts) do 
         pcall(function()
             part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
         end)
-        part.Anchored = false 
+        part.Anchored = originalAnchored[part] or false
     end
 end
 
