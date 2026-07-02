@@ -1080,60 +1080,44 @@ local function startCourierLoop()
         end)
     end
 
+    pcall(function() ReplicatedStorage:WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest"):FireServer(job.Name, job.TeamId, 1, 0, "Detector") end)
+    task.wait(1.5)
+
     local SELECTED_CAR = SpawnCar.SelectedCar or "Yamahax-MioSporty"
     
-    -- Cek apakah player sudah bawa paket sebelumnya (resume job)
-    pcall(function()
-        local locFolder = Workspace:FindFirstChild("Livrason") and Workspace.Livrason:FindFirstChild("Location")
-        if locFolder then
-            for _, v in ipairs(locFolder:GetChildren()) do
-                if tonumber(v.Name) and PackageData[v.Name] then
-                    activePackageNum = v.Name
-                    print("[Courier] Ditemukan paket yang sudah aktif (Resume Job): #" .. activePackageNum)
-                    break
-                end
-            end
-        end
-    end)
-
-    if not activePackageNum then
-        pcall(function() ReplicatedStorage:WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest"):FireServer(job.Name, job.TeamId, 1, 0, "Detector") end)
-        task.wait(1.5)
-
-        -- Spawn Awal & Ambil Paket Pertama
-        pcall(function() ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR) end)
-        task.wait(5)
-        rideCourierMotor()
-        task.wait(1)
-        local motor = findCourierMotor()
-        if motor then
-            print("[Courier] Tweening ke spot start job...")
-            _tweenVehicle(motor, CFrame.new(job.X, job.Y, job.Z), TWEEN_DURATION)
-        end
-        task.wait(0.5)
-
-        jumpAndWait()
-
-        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid:MoveTo(Vector3.new(-5109.06, 5.18, -3758.69))
-            task.wait(3)
-            
-            setCameraBehindPlayer()
-            task.wait(0.5)
-            
-            pcall(function()
-                local prompt = Workspace.Livrason.Take1.Take.ProximityPrompt
-                prompt:InputHoldBegin()
-                task.wait(prompt.HoldDuration + 0.1)
-                prompt:InputHoldEnd()
-            end)
-            
-            local cam = Workspace.CurrentCamera
-            if cam then cam.CameraType = Enum.CameraType.Custom end
-        end
-        task.wait(2)
+    -- Spawn Awal & Ambil Paket Pertama
+    pcall(function() ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR) end)
+    task.wait(5)
+    rideCourierMotor()
+    task.wait(1)
+    local motor = findCourierMotor()
+    if motor then
+        print("[Courier] Tweening ke spot start job...")
+        _tweenVehicle(motor, CFrame.new(job.X, job.Y, job.Z), TWEEN_DURATION)
     end
+    task.wait(0.5)
+
+    jumpAndWait()
+
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:MoveTo(Vector3.new(-5109.06, 5.18, -3758.69))
+        task.wait(3)
+        
+        setCameraBehindPlayer()
+        task.wait(0.5)
+        
+        pcall(function()
+            local prompt = Workspace.Livrason.Take1.Take.ProximityPrompt
+            prompt:InputHoldBegin()
+            task.wait(prompt.HoldDuration + 0.1)
+            prompt:InputHoldEnd()
+        end)
+        
+        local cam = Workspace.CurrentCamera
+        if cam then cam.CameraType = Enum.CameraType.Custom end
+    end
+    task.wait(2)
 
     -- =============================================================
     -- LOOP ANTAR PAKET
