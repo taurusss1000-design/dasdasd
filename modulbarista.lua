@@ -332,9 +332,10 @@ local function doBrewLoop(sid)
             if not isSessionAlive(sid) then break end
 
             -- Set camera supaya ProximityPrompt muncul (tidak terhalang)
+            -- PENTING: jangan ubah CameraType ke Scriptable karena akan freeze karakter!
+            -- Cukup override CFrame saja, kamera akan balik sendiri setelah sesaat
             local cam = Workspace.CurrentCamera
             if cam then
-                cam.CameraType = Enum.CameraType.Scriptable
                 cam.CFrame = CFrame.new(Vector3.new(-4998.32, 8.11, -805.22), Vector3.new(-4998.31, 7.90, -804.24))
             end
             task.wait(0.5)
@@ -347,10 +348,6 @@ local function doBrewLoop(sid)
                 machinePrompt:InputHoldEnd()
                 holdOk = true
             end)
-            
-            if cam then
-                cam.CameraType = Enum.CameraType.Custom
-            end
             if not isSessionAlive(sid) then break end
             if not holdOk then task.wait(15) continue end
 
