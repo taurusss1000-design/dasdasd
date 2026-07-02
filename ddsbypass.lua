@@ -1180,31 +1180,34 @@ local function startCourierLoop()
         task.wait(1)
 
         -- 6. Hold paket setelah dipastikan sudah di lokasi
-        print("[Courier] Mencoba hold paket #" .. activePackageNum)
-        pcall(function()
-            local LocationFolder = Workspace.Livrason.Location
-            local paketModel     = LocationFolder:FindFirstChild(activePackageNum)
-            local block          = paketModel and paketModel:FindFirstChild("Block")
-            if block then
-                local prompt = block:FindFirstChild("ProximityPrompt")
-                if prompt then
-                    local box = LocalPlayer.Backpack:FindFirstChild("Box") or char:FindFirstChild("Box")
-                    if box and hum then hum:EquipTool(box) task.wait(0.3) end
-                    prompt:InputHoldBegin()
-                    task.wait(prompt.HoldDuration + 0.1)
-                    prompt:InputHoldEnd()
+        local currentPackage = activePackageNum
+        print("[Courier] Mencoba hold paket #" .. currentPackage)
+        
+        while courierRunning and activePackageNum == currentPackage do
+            pcall(function()
+                local LocationFolder = Workspace.Livrason.Location
+                local paketModel     = LocationFolder:FindFirstChild(currentPackage)
+                local block          = paketModel and paketModel:FindFirstChild("Block")
+                if block then
+                    local prompt = block:FindFirstChild("ProximityPrompt")
+                    if prompt then
+                        local box = LocalPlayer.Backpack:FindFirstChild("Box") or char:FindFirstChild("Box")
+                        if box and hum then hum:EquipTool(box) task.wait(0.3) end
+                        prompt:InputHoldBegin()
+                        task.wait(prompt.HoldDuration + 0.1)
+                        prompt:InputHoldEnd()
+                    end
                 end
-            end
-        end)
-        task.wait(0.5)
+            end)
+            task.wait(1)
+        end
 
         -- 6. Look ke arah AfterLook
         print("[Courier] Memutar arah sebelum spawn kendaraan...")
         lookToDirection(data.AfterLook)
 
-        print("[Courier] Paket #" .. activePackageNum .. " Selesai!")
+        print("[Courier] Paket #" .. currentPackage .. " Selesai!")
         totalCourierCycle = totalCourierCycle + 1
-        activePackageNum = nil
         
         task.wait(3)
         if sendCourierWebhook then pcall(sendCourierWebhook) end
