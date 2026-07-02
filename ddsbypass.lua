@@ -2559,6 +2559,15 @@ local AntiAFK = (function()
                     local hum = char and char:FindFirstChild("Humanoid")
                     if not hrp or not hum then return end
 
+                    -- Tunggu sampai player turun dari motor/kendaraan
+                    while hum.Sit do
+                        task.wait(1)
+                        if not AA.Enabled then return end
+                        char = game.Players.LocalPlayer.Character
+                        hum = char and char:FindFirstChild("Humanoid")
+                        if not hum then return end
+                    end
+
                     -- Simulasi tekan W sebentar
                     keypress(0x57)
                     task.wait(0.1)
