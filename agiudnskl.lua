@@ -7,7 +7,7 @@ repeat task.wait() until game:IsLoaded()
 
 -- ── CONFIG ──────────────────────────────────────────────────
 local CFG = {
-    API_URL      = "https://kingvypers.site/api/validate-key",
+    API_URL      = "cobabujank-production.up.railway.app",
     ENDPOINT     = "/api/validate-key",
     SCRIPTS      = {
         -- [131378148336503] = "https://raw.githubusercontent.com/SapuLidi-Eak/Asallahyakan/refs/heads/main/d_d_s.lua", --dds --utama lama
