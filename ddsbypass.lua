@@ -44,11 +44,21 @@ local Old; Old = hookfunction(getrenv().debug.info, newcclosure(function(...)
     local LevelOrFunc, Info = ...
 
     if Detected and LevelOrFunc == Detected then
-        if DEBUG then
-            warn(`zins | adonis bypassed`)
-        end
+        -- Jangan pakai coroutine.yield karena akan mematikan thread Adonis Ping!
+        -- Kembalikan info palsu seolah-olah ini fungsi Lua asli
+        if Info == "s" then return "AntiCheat" end
+        if Info == "l" then return 1 end
+        if Info == "a" then return 0, false end
+        if Info == "n" then return "Detected" end
+        return Old(...)
+    end
 
-        return coroutine.yield(coroutine.running())
+    if Kill and LevelOrFunc == Kill then
+        if Info == "s" then return "AntiCheat" end
+        if Info == "l" then return 1 end
+        if Info == "a" then return 0, false end
+        if Info == "n" then return "Kill" end
+        return Old(...)
     end
 
     return Old(...)
