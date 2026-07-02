@@ -1013,7 +1013,13 @@ local function _tweenVehicle(vehicle, targetCFrame, duration)
     end)
     tween.Completed:Wait()
     conn:Disconnect()
-    for _, part in ipairs(parts) do part.Anchored = false end
+    for _, part in ipairs(parts) do 
+        pcall(function()
+            part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        end)
+        part.Anchored = false 
+    end
 end
 
 local function walkToAndFace(hum, char, targetPos, lookVec, radiusOK)
@@ -2543,43 +2549,31 @@ local AntiAFK = (function()
     local AA = {
         Enabled = false,
         Thread = nil,
+        Conn = nil,
     }
 
     function AA.Start()
         if AA.Enabled then return end
         AA.Enabled = true
 
+        local VirtualUser = game:GetService("VirtualUser")
+        
+        -- Bypass Anti-AFK Roblox native yang paling ampuh (jalan di background saat idled)
+        AA.Conn = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+            if AA.Enabled then
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+                print("[Anti-AFK] Roblox Idle bypassed!")
+            end
+        end)
+
         AA.Thread = task.spawn(function()
             while AA.Enabled do
-                task.wait(1100)
+                task.wait(600)
                 if not AA.Enabled then break end
                 pcall(function()
-                    local char = game.Players.LocalPlayer.Character
-                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    local hum = char and char:FindFirstChild("Humanoid")
-                    if not hrp or not hum then return end
-
-                    -- Tunggu sampai player turun dari motor/kendaraan
-                    while hum.Sit do
-                        task.wait(1)
-                        if not AA.Enabled then return end
-                        char = game.Players.LocalPlayer.Character
-                        hum = char and char:FindFirstChild("Humanoid")
-                        if not hum then return end
-                    end
-
-                    -- Simulasi tekan W sebentar
-                    keypress(0x57)
-                    task.wait(0.1)
-                    keyrelease(0x57)
-                    task.wait(0.1)
-
-                    -- Simulasi tekan space
-                    keypress(0x20)
-                    task.wait(0.1)
-                    keyrelease(0x20)
-
-                    print("Anti AFK: keypress fired!")
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
                 end)
             end
         end)
@@ -2591,6 +2585,10 @@ local AntiAFK = (function()
         if AA.Thread then
             task.cancel(AA.Thread)
             AA.Thread = nil
+        end
+        if AA.Conn then
+            AA.Conn:Disconnect()
+            AA.Conn = nil
         end
     end
 
