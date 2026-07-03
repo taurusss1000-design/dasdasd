@@ -52,7 +52,6 @@ local function walkNoclip(targetPos, stopRadius)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return end
 
-    -- Aktifin noclip
     local noclipConn
     noclipConn = RunService.Stepped:Connect(function()
         for _, part in ipairs(char:GetDescendants()) do
@@ -64,23 +63,20 @@ local function walkNoclip(targetPos, stopRadius)
 
     hum:MoveTo(targetPos)
 
-    -- Monitor jarak
     repeat
         task.wait(0.1)
         hrp = char:FindFirstChild("HumanoidRootPart")
     until not hrp or (hrp.Position - targetPos).Magnitude <= stopRadius
 
-    -- Matiin noclip
     noclipConn:Disconnect()
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = true
         end
     end
-    print("[NoClip] Mati!")
     task.wait(0.3)
 
-    -- Lanjut walk normal sampai bener-bener sampai
+    -- Walk normal sampai sampai
     hrp = char:FindFirstChild("HumanoidRootPart")
     for attempt = 1, 10 do
         if not hrp then break end
@@ -89,7 +85,6 @@ local function walkNoclip(targetPos, stopRadius)
             print("[Walk] Sampai! dist: " .. math.floor(dist))
             break
         end
-        print("[Walk] attempt #" .. attempt .. " | dist: " .. math.floor(dist))
         hum:MoveTo(targetPos)
         local t = tick()
         repeat
@@ -102,7 +97,7 @@ local function walkNoclip(targetPos, stopRadius)
 end
 
 -- =================================================================
--- STEP 1: WALK KE KURSI + DUDUK
+-- STEP 1: WALK KE KURSI + DUDUK (retry sampai bener-bener duduk)
 -- =================================================================
 local char = LocalPlayer.Character
 local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -119,31 +114,54 @@ for _, pos in ipairs(SeatPositions) do
     end
 end
 
-print("[Office] Jalan ke kursi...")
-walkNoclip(closestSeat, 5)
-task.wait(0.3)
+local function tryDuduk()
+    local seat = nil
+    for _, obj in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        if obj:IsA("Seat") and (obj.Position - closestSeat).Magnitude < 2 then
+            seat = obj
+            break
+        end
+    end
+    if seat then
+        seat:Sit(hum)
+        task.wait(0.5)
+        -- Cek bener-bener duduk
+        if hum.Sit then
+            print("[Office] Duduk berhasil!")
+            return true
+        end
+    end
+    return false
+end
 
--- Duduk
-local seat = nil
-for _, obj in ipairs(game:GetService("Workspace"):GetDescendants()) do
-    if obj:IsA("Seat") and (obj.Position - closestSeat).Magnitude < 2 then
-        seat = obj
-        break
+print("[Office] Jalan ke kursi...")
+local duduk = false
+for attempt = 1, 5 do
+    walkNoclip(closestSeat, 5)
+    task.wait(0.3)
+
+    duduk = tryDuduk()
+    if duduk then break end
+
+    -- Belum duduk, menjauh dulu 5 studs lalu coba lagi
+    print("[Office] Belum duduk, mundur dulu... attempt #" .. attempt)
+    hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local backPos = hrp.Position + (hrp.Position - closestSeat).Unit * 5
+        hum:MoveTo(backPos)
+        task.wait(1.5)
     end
 end
 
-if seat then
-    seat:Sit(hum)
-    print("[Office] Duduk!")
-else
-    warn("[Office] Kursi tidak ditemukan!")
+if not duduk then
+    warn("[Office] Gagal duduk setelah 5 attempt!")
     return
 end
 
 task.wait(1)
 
 -- =================================================================
--- STEP 2: AUTO JAWAB SOAL
+-- STEP 2: AUTO JAWAB SOAL TERUS SAMPAI DIARAHKAN KE PRINTER
 -- =================================================================
 local GenerateQuestion = RS.JobEvents.GenerateQuestion
 local CorrectAnswer = RS.JobEvents.CorrectAnswer
@@ -170,35 +188,41 @@ answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, 
         end
     end
 
+    -- Delay random 2-6 detik biar keliatan manusiawi
     task.wait(math.random(2, 6))
 
     if answerId then
         CorrectAnswer:FireServer(answerId, questionId)
-        print("[Office] Jawaban terkirim! " .. question .. " = " .. answer)
+        print("[Office] Jawaban terkirim! " .. question .. " = " .. tostring(answer))
     else
-        warn("[Office] Jawaban tidak ditemukan!")
+        warn("[Office] Jawaban tidak ditemukan di pilihan!")
     end
 end)
 
+print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
+
 -- =================================================================
--- STEP 3: AUTO KE PRINTER + HOLD
+-- STEP 3: DIARAHKAN KE PRINTER → STOP JAWAB → WALK → HOLD
 -- =================================================================
 RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
-    print("[Office] Assigned ke: " .. printerName)
+    print("[Office] Assigned ke printer: " .. printerName)
 
-    -- Stop jawab soal dulu
+    -- Stop auto jawab soal
     answerConn:Disconnect()
     print("[Office] Auto answer dimatiin!")
 
     local targetPos = Printers[printerName]
-    if not targetPos then warn("[Office] Printer tidak dikenal!") return end
+    if not targetPos then
+        warn("[Office] Printer tidak dikenal: " .. printerName)
+        return
+    end
 
     -- Lompat dulu keluar kursi
     print("[Office] Jump keluar kursi...")
     jumpAndWait()
 
     -- Walk ke printer pakai noclip, matiin 5 studs sebelum sampai
-    print("[Office] Jalan ke " .. printerName)
+    print("[Office] Jalan ke " .. printerName .. "...")
     walkNoclip(targetPos, 5)
 
     -- Pastikan sudah sampai
