@@ -164,17 +164,19 @@ task.wait(1)
 -- STEP 2: AUTO JAWAB SOAL TERUS SAMPAI DIARAHKAN KE PRINTER
 -- =================================================================
 local GenerateQuestion = RS.JobEvents.GenerateQuestion
-local CorrectAnswer = RS.JobEvents.CorrectAnswer
+local CorrectAnswer    = RS.JobEvents.CorrectAnswer
 
 local answerConn
+local successConn
 local isAnswering = false
 
 answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, questionId)
     if isAnswering then return end -- skip kalau lagi proses jawab
     isAnswering = true
 
-    print("[Office] Soal: " .. question)
+    print("[Office] Soal masuk: " .. question)
 
+    -- Hitung jawaban
     local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
     a, b = tonumber(a), tonumber(b)
 
@@ -193,17 +195,39 @@ answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, 
         end
     end
 
-    -- Tunggu dulu 2-6 detik baru jawab
+    -- Tunggu random 2-6 detik biar kelihatan natural
     task.wait(math.random(2, 6))
 
-    if answerId then
-        CorrectAnswer:FireServer(answerId, questionId)
-        print("[Office] Jawaban terkirim! " .. question .. " = " .. tostring(answer))
-    else
-        warn("[Office] Jawaban tidak ditemukan!")
+    if not answerId then
+        warn("[Office] Jawaban tidak ditemukan untuk soal: " .. question)
+        isAnswering = false
+        return
     end
 
-    isAnswering = false -- selesai, siap terima soal berikutnya
+    -- Kirim jawaban ke server
+    CorrectAnswer:FireServer(answerId, questionId)
+    print("[Office] Jawaban terkirim! " .. question .. " = " .. tostring(answer))
+
+    -- Tunggu konfirmasi "success" dari server sebelum siap soal berikutnya
+    if successConn then successConn:Disconnect() end
+    successConn = CorrectAnswer.OnClientEvent:Connect(function(status)
+        if status == "success" then
+            successConn:Disconnect()
+            successConn = nil
+            print("[Office] Server konfirmasi: success! Siap soal berikutnya...")
+            isAnswering = false -- server akan kirim soal berikutnya via GenerateQuestion
+        end
+    end)
+
+    -- Safety timeout: kalau 15 detik server ga reply, reset juga
+    task.spawn(function()
+        task.wait(15)
+        if isAnswering then
+            warn("[Office] Timeout konfirmasi server, reset isAnswering...")
+            if successConn then successConn:Disconnect() successConn = nil end
+            isAnswering = false
+        end
+    end)
 end)
 
 print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
