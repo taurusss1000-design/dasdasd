@@ -208,7 +208,7 @@ local function processQuestion(question, choices, questionId)
     end
 
     -- Delay natural 2-6 detik
-    local delay = math.random(2, 6)
+    local delay = math.random(6, 10)
     print("[Office] Jawab dalam " .. delay .. " detik...")
     task.wait(delay)
     if not isOfficeRunning then return end
@@ -248,74 +248,6 @@ answerConn = task.spawn(function()
         else
             -- Queue kosong, tunggu soal baru masuk
             task.wait(0.2)
-        end
-    end
-end)
-
--- Pakai coroutine sequential biar ga ada race condition antar soal
-answerConn = task.spawn(function()
-    print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
-    while isOfficeRunning do
-        -- Tunggu soal masuk dari server (blocking)
-        local question, choices, questionId = GenerateQuestion.OnClientEvent:Wait()
-        if not isOfficeRunning then break end
-
-        print("[Office] Soal masuk: " .. tostring(question))
-
-        -- Hitung jawaban
-        local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
-        a, b = tonumber(a), tonumber(b)
-
-        local answer
-        if op == "+" then answer = a + b
-        elseif op == "-" then answer = a - b
-        elseif op == "*" then answer = a * b
-        elseif op == "/" then answer = a / b
-        end
-
-        local answerId
-        if choices then
-            for _, choice in ipairs(choices) do
-                if tonumber(choice.Text) == answer then
-                    answerId = choice.ID
-                    break
-                end
-            end
-        end
-
-        if not answerId then
-            warn("[Office] Jawaban tidak ditemukan untuk: " .. tostring(question))
-            task.wait(2)
-            continue
-        end
-
-        -- Delay natural 2-6 detik sebelum jawab
-        local delay = math.random(2, 6)
-        print("[Office] Jawab dalam " .. delay .. " detik...")
-        task.wait(delay)
-        if not isOfficeRunning then break end
-
-        -- Kirim jawaban ke server
-        CorrectAnswer:FireServer(answerId, questionId)
-        print("[Office] Jawaban terkirim: " .. tostring(question) .. " = " .. tostring(answer))
-
-        -- Tunggu konfirmasi "success" dari server (blocking, timeout 15 detik)
-        local confirmed = false
-        local tempConn
-        tempConn = CorrectAnswer.OnClientEvent:Connect(function(status)
-            if status == "success" then
-                confirmed = true
-            end
-        end)
-
-        local t = tick()
-        repeat task.wait(0.1) until confirmed or (tick() - t > 15) or not isOfficeRunning
-        tempConn:Disconnect()
-
-        if confirmed then
-            print("[Office] Server konfirmasi success! Tunggu soal berikutnya...")
-        else
-            warn("[Office] Timeout konfirmasi server, lanjut ke soal berikutnya...")
         end
     end
 end)
