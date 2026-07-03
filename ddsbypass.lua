@@ -2670,7 +2670,7 @@ local AutoRejoin = (function()
     -- URL script yang akan di-execute otomatis setelah rejoin
     -- WARNING: Ganti SCRIPT_URL dengan URL script UTAMA (misal pastebin/github raw cobadds.lua lo)
     -- JANGAN pakai URL vyperui.lua karena itu cuma UI-nya saja!
-    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/allangmateiheang/refs/heads/main/heankdds.lua" 
+    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/ddsbypass.lua" 
     local EXEC_DELAY = 30 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
 
     -- Cari queue_on_teleport dari berbagai executor secara aman
