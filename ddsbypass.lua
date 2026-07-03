@@ -1099,7 +1099,7 @@ local function startCourierLoop()
         end)
     end
 
-    pcall(function() ReplicatedStorage:WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest"):FireServer(job.Name, job.TeamId, 1, 0, "Detector") end)
+    pcall(function() ReplicatedStorage:WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest"):FireServer("Courier", 11378976, 0, 0, "Detector") end)
     task.wait(1.5)
 
     local SELECTED_CAR = SpawnCar.SelectedCar or "Yamahax-MioSporty"
@@ -2670,8 +2670,8 @@ local AutoRejoin = (function()
     -- URL script yang akan di-execute otomatis setelah rejoin
     -- WARNING: Ganti SCRIPT_URL dengan URL script UTAMA (misal pastebin/github raw cobadds.lua lo)
     -- JANGAN pakai URL vyperui.lua karena itu cuma UI-nya saja!
-    local SCRIPT_URL = "https://raw.githubusercontent.com/SapuLidi-Eak/Asallahyakan/refs/heads/main/d_d_s.lua" 
-    local EXEC_DELAY = 20 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
+    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/allangmateiheang/refs/heads/main/heankdds.lua" 
+    local EXEC_DELAY = 30 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
 
     -- Cari queue_on_teleport dari berbagai executor secara aman
     local function getQueueOnTeleport()
