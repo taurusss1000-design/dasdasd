@@ -167,7 +167,12 @@ local GenerateQuestion = RS.JobEvents.GenerateQuestion
 local CorrectAnswer = RS.JobEvents.CorrectAnswer
 
 local answerConn
+local isAnswering = false
+
 answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, questionId)
+    if isAnswering then return end -- skip kalau lagi proses jawab
+    isAnswering = true
+
     print("[Office] Soal: " .. question)
 
     local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
@@ -188,15 +193,17 @@ answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, 
         end
     end
 
-    -- Delay random 2-6 detik biar keliatan manusiawi
+    -- Tunggu dulu 2-6 detik baru jawab
     task.wait(math.random(2, 6))
 
     if answerId then
         CorrectAnswer:FireServer(answerId, questionId)
         print("[Office] Jawaban terkirim! " .. question .. " = " .. tostring(answer))
     else
-        warn("[Office] Jawaban tidak ditemukan di pilihan!")
+        warn("[Office] Jawaban tidak ditemukan!")
     end
+
+    isAnswering = false -- selesai, siap terima soal berikutnya
 end)
 
 print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
