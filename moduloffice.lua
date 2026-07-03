@@ -167,70 +167,77 @@ local GenerateQuestion = RS.JobEvents.GenerateQuestion
 local CorrectAnswer    = RS.JobEvents.CorrectAnswer
 
 local answerConn
-local successConn
-local isAnswering = false
+local isOfficeRunning = true
 
-answerConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, questionId)
-    if isAnswering then return end -- skip kalau lagi proses jawab
-    isAnswering = true
+-- Pakai coroutine sequential biar ga ada race condition antar soal
+answerConn = task.spawn(function()
+    print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
+    while isOfficeRunning do
+        -- Tunggu soal masuk dari server (blocking)
+        local question, choices, questionId = GenerateQuestion.OnClientEvent:Wait()
+        if not isOfficeRunning then break end
 
-    print("[Office] Soal masuk: " .. question)
+        print("[Office] Soal masuk: " .. tostring(question))
 
-    -- Hitung jawaban
-    local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
-    a, b = tonumber(a), tonumber(b)
+        -- Hitung jawaban
+        local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
+        a, b = tonumber(a), tonumber(b)
 
-    local answer
-    if op == "+" then answer = a + b
-    elseif op == "-" then answer = a - b
-    elseif op == "*" then answer = a * b
-    elseif op == "/" then answer = a / b
-    end
+        local answer
+        if op == "+" then answer = a + b
+        elseif op == "-" then answer = a - b
+        elseif op == "*" then answer = a * b
+        elseif op == "/" then answer = a / b
+        end
 
-    local answerId
-    for _, choice in ipairs(choices) do
-        if tonumber(choice.Text) == answer then
-            answerId = choice.ID
-            break
+        local answerId
+        if choices then
+            for _, choice in ipairs(choices) do
+                if tonumber(choice.Text) == answer then
+                    answerId = choice.ID
+                    break
+                end
+            end
+        end
+
+        if not answerId then
+            warn("[Office] Jawaban tidak ditemukan untuk: " .. tostring(question))
+            task.wait(2)
+            continue
+        end
+
+        -- Delay natural 2-6 detik sebelum jawab
+        local delay = math.random(5, 10)
+        print("[Office] Jawab dalam " .. delay .. " detik...")
+        task.wait(delay)
+        if not isOfficeRunning then break end
+
+        -- Kirim jawaban ke server
+        CorrectAnswer:FireServer(answerId, questionId)
+        print("[Office] Jawaban terkirim: " .. tostring(question) .. " = " .. tostring(answer))
+
+        -- Tunggu konfirmasi "success" dari server (blocking, timeout 15 detik)
+        local confirmed = false
+        local tempConn
+        tempConn = CorrectAnswer.OnClientEvent:Connect(function(status)
+            if status == "success" then
+                confirmed = true
+            end
+        end)
+
+        local t = tick()
+        repeat task.wait(0.1) until confirmed or (tick() - t > 15) or not isOfficeRunning
+        tempConn:Disconnect()
+
+        if confirmed then
+            print("[Office] Server konfirmasi success! Tunggu soal berikutnya...")
+        else
+            warn("[Office] Timeout konfirmasi server, lanjut ke soal berikutnya...")
         end
     end
-
-    -- Tunggu random 2-6 detik biar kelihatan natural
-    task.wait(math.random(5, 8))
-
-    if not answerId then
-        warn("[Office] Jawaban tidak ditemukan untuk soal: " .. question)
-        isAnswering = false
-        return
-    end
-
-    -- Kirim jawaban ke server
-    CorrectAnswer:FireServer(answerId, questionId)
-    print("[Office] Jawaban terkirim! " .. question .. " = " .. tostring(answer))
-
-    -- Tunggu konfirmasi "success" dari server sebelum siap soal berikutnya
-    if successConn then successConn:Disconnect() end
-    successConn = CorrectAnswer.OnClientEvent:Connect(function(status)
-        if status == "success" then
-            successConn:Disconnect()
-            successConn = nil
-            print("[Office] Server konfirmasi: success! Siap soal berikutnya...")
-            isAnswering = false -- server akan kirim soal berikutnya via GenerateQuestion
-        end
-    end)
-
-    -- Safety timeout: kalau 15 detik server ga reply, reset juga
-    task.spawn(function()
-        task.wait(15)
-        if isAnswering then
-            warn("[Office] Timeout konfirmasi server, reset isAnswering...")
-            if successConn then successConn:Disconnect() successConn = nil end
-            isAnswering = false
-        end
-    end)
 end)
 
-print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
+print("[Office] Auto Office dimulai!")
 
 -- =================================================================
 -- STEP 3: DIARAHKAN KE PRINTER → STOP JAWAB → WALK → HOLD
@@ -238,8 +245,9 @@ print("[Office] Auto jawab soal aktif, menunggu soal dari server...")
 RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
     print("[Office] Assigned ke printer: " .. printerName)
 
-    -- Stop auto jawab soal
-    answerConn:Disconnect()
+    -- Stop coroutine jawab soal
+    isOfficeRunning = false
+    if answerConn then task.cancel(answerConn) answerConn = nil end
     print("[Office] Auto answer dimatiin!")
 
     local targetPos = Printers[printerName]
