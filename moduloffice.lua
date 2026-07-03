@@ -97,12 +97,28 @@ local function walkNoclip(targetPos, stopRadius)
 end
 
 -- =================================================================
+-- LISTEN SOAL SEBELUM WALK (buffer queue supaya tidak kelewatan)
+-- =================================================================
+local GenerateQuestion = RS.JobEvents.GenerateQuestion
+local CorrectAnswer    = RS.JobEvents.CorrectAnswer
+
+local questionQueue   = {} -- buffer soal yang masuk sebelum/saat walk
+local isOfficeRunning = true
+local answerConn
+
+-- Langsung pasang listener sebelum walk biar soal tidak kelewatan
+local bufferConn = GenerateQuestion.OnClientEvent:Connect(function(question, choices, questionId)
+    table.insert(questionQueue, { question = question, choices = choices, questionId = questionId })
+    print("[Office] Soal di-buffer: " .. tostring(question) .. " (queue: " .. #questionQueue .. ")")
+end)
+
+-- =================================================================
 -- STEP 1: WALK KE KURSI + DUDUK (retry sampai bener-bener duduk)
 -- =================================================================
 local char = LocalPlayer.Character
 local hum = char and char:FindFirstChildOfClass("Humanoid")
 local hrp = char and char:FindFirstChild("HumanoidRootPart")
-if not hum or not hrp then return end
+if not hum or not hrp then bufferConn:Disconnect() return end
 
 -- Pilih kursi terdekat
 local closestSeat, closestDist = SeatPositions[1], math.huge
@@ -125,7 +141,6 @@ local function tryDuduk()
     if seat then
         seat:Sit(hum)
         task.wait(0.5)
-        -- Cek bener-bener duduk
         if hum.Sit then
             print("[Office] Duduk berhasil!")
             return true
@@ -143,7 +158,6 @@ for attempt = 1, 5 do
     duduk = tryDuduk()
     if duduk then break end
 
-    -- Belum duduk, menjauh dulu 5 studs lalu coba lagi
     print("[Office] Belum duduk, mundur dulu... attempt #" .. attempt)
     hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then
@@ -155,19 +169,88 @@ end
 
 if not duduk then
     warn("[Office] Gagal duduk setelah 5 attempt!")
+    bufferConn:Disconnect()
     return
 end
 
 task.wait(1)
 
 -- =================================================================
--- STEP 2: AUTO JAWAB SOAL TERUS SAMPAI DIARAHKAN KE PRINTER
+-- STEP 2: AUTO JAWAB SOAL (proses queue dulu, lalu terus listen)
 -- =================================================================
-local GenerateQuestion = RS.JobEvents.GenerateQuestion
-local CorrectAnswer    = RS.JobEvents.CorrectAnswer
+local function processQuestion(question, choices, questionId)
+    print("[Office] Proses soal: " .. tostring(question))
 
-local answerConn
-local isOfficeRunning = true
+    local a, op, b = question:match("(%d+) ([%+%-%*%/]) (%d+)")
+    a, b = tonumber(a), tonumber(b)
+
+    local answer
+    if op == "+" then answer = a + b
+    elseif op == "-" then answer = a - b
+    elseif op == "*" then answer = a * b
+    elseif op == "/" then answer = a / b
+    end
+
+    local answerId
+    if choices then
+        for _, choice in ipairs(choices) do
+            if tonumber(choice.Text) == answer then
+                answerId = choice.ID
+                break
+            end
+        end
+    end
+
+    if not answerId then
+        warn("[Office] Jawaban tidak ditemukan untuk: " .. tostring(question))
+        task.wait(2)
+        return
+    end
+
+    -- Delay natural 2-6 detik
+    local delay = math.random(2, 6)
+    print("[Office] Jawab dalam " .. delay .. " detik...")
+    task.wait(delay)
+    if not isOfficeRunning then return end
+
+    -- Kirim jawaban
+    CorrectAnswer:FireServer(answerId, questionId)
+    print("[Office] Jawaban terkirim: " .. tostring(question) .. " = " .. tostring(answer))
+
+    -- Tunggu konfirmasi "success" dari server (timeout 15 detik)
+    local confirmed = false
+    local tempConn
+    tempConn = CorrectAnswer.OnClientEvent:Connect(function(status)
+        if status == "success" then confirmed = true end
+    end)
+    local t = tick()
+    repeat task.wait(0.1) until confirmed or (tick() - t > 15) or not isOfficeRunning
+    tempConn:Disconnect()
+
+    if confirmed then
+        print("[Office] Server konfirmasi success! Tunggu soal berikutnya...")
+    else
+        warn("[Office] Timeout konfirmasi server, lanjut...")
+    end
+end
+
+-- Jalankan coroutine: drain queue dulu, lalu listen soal baru
+answerConn = task.spawn(function()
+    -- Ganti bufferConn ke listener biasa dulu supaya soal baru masuk ke queue
+    -- (bufferConn masih aktif, queue akan terus terisi)
+
+    print("[Office] Auto jawab aktif, cek queue (" .. #questionQueue .. " soal)...")
+    while isOfficeRunning do
+        if #questionQueue > 0 then
+            -- Ambil soal paling lama dari queue
+            local data = table.remove(questionQueue, 1)
+            processQuestion(data.question, data.choices, data.questionId)
+        else
+            -- Queue kosong, tunggu soal baru masuk
+            task.wait(0.2)
+        end
+    end
+end)
 
 -- Pakai coroutine sequential biar ga ada race condition antar soal
 answerConn = task.spawn(function()
@@ -207,7 +290,7 @@ answerConn = task.spawn(function()
         end
 
         -- Delay natural 2-6 detik sebelum jawab
-        local delay = math.random(5, 10)
+        local delay = math.random(2, 6)
         print("[Office] Jawab dalam " .. delay .. " detik...")
         task.wait(delay)
         if not isOfficeRunning then break end
