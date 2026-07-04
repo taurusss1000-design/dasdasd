@@ -1,8 +1,11 @@
+local OfficeModule = {}
+OfficeModule.Running = false
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
 -- =================================================================
 -- DATA
@@ -50,7 +53,6 @@ local function disableNoclip(char, conn)
 end
 
 local function walkNoclip(targetPos, stopRadius)
-    stopRadius = stopRadius or 5
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -74,10 +76,11 @@ local function walkNoclip(targetPos, stopRadius)
         if not hrp then break end
         local dist = (hrp.Position - targetPos).Magnitude
         if dist <= 3 then
-            print("[Walk] Sampai! dist: " .. math.floor(dist))
+            hum:MoveTo(hrp.Position) -- Stop jalan
             break
         end
         hum:MoveTo(targetPos)
+        
         local t = tick()
         repeat
             task.wait(0.1)
@@ -104,69 +107,10 @@ local function jumpAndWait()
     task.wait(0.3)
 end
 
--- =================================================================
--- STEP 1: WALK KE KURSI + DUDUK (retry sampai berhasil)
--- =================================================================
-local char = LocalPlayer.Character
-local hum = char and char:FindFirstChildOfClass("Humanoid")
-local hrp = char and char:FindFirstChild("HumanoidRootPart")
-if not hum or not hrp then return end
-
--- Pilih kursi terdekat
-local closestSeat, closestDist = SeatPositions[1], math.huge
-for _, pos in ipairs(SeatPositions) do
-    local dist = (hrp.Position - pos).Magnitude
-    if dist < closestDist then
-        closestDist = dist
-        closestSeat = pos
-    end
-end
-
-local function tryDuduk()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Seat") and (obj.Position - closestSeat).Magnitude < 2 then
-            obj:Sit(hum)
-            task.wait(0.5)
-            if hum.Sit then
-                print("[Office] Duduk berhasil!")
-                return true
-            end
-        end
-    end
-    return false
-end
-
-print("[Office] Jalan ke kursi...")
-local duduk = false
-for attempt = 1, 5 do
-    walkNoclip(closestSeat, 5)
-    task.wait(0.3)
-    duduk = tryDuduk()
-    if duduk then break end
-    print("[Office] Belum duduk, mundur dulu... attempt #" .. attempt)
-    hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local backPos = hrp.Position + (hrp.Position - closestSeat).Unit * 5
-        hum:MoveTo(backPos)
-        task.wait(1.5)
-    end
-end
-
-if not duduk then
-    warn("[Office] Gagal duduk setelah 5 attempt!")
-    return
-end
-
-task.wait(1)
-
--- =================================================================
--- STEP 2: AUTO JAWAB SOAL
--- =================================================================
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-local WorkGui = playerGui:WaitForChild("WorkGui")
-local stopMath = false
-
-local function jawabSoal()
+local function jawabSoal(stopTable)
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local WorkGui = playerGui:WaitForChild("WorkGui")
+    
     local questionLabel = WorkGui:FindFirstChild("QuestionLabel")
     if not questionLabel or not questionLabel.Visible or questionLabel.Text == "" then return end
 
@@ -189,91 +133,191 @@ local function jawabSoal()
     for _, btn in pairs(frame:GetChildren()) do
         if btn:IsA("TextButton") and btn.Visible and tonumber(btn.Text) == jawaban then
             task.wait(math.random(8, 25) / 10)
-            if stopMath then return end
-            firesignal(btn.MouseButton1Click)
+            if stopTable.stop then return end
+            
+            -- FIX untuk fire proximity/button kalau ada firesignal
+            if firesignal then
+                firesignal(btn.MouseButton1Click)
+            else
+                -- Fallback kalau executor gak support firesignal
+                for _, connection in pairs(getconnections(btn.MouseButton1Click)) do
+                    connection:Fire()
+                end
+            end
             print("[Office] Klik jawaban: " .. jawaban)
             return
         end
     end
 end
 
-task.spawn(function()
-    while not stopMath do
-        task.wait(0.3)
-        jawabSoal()
-        task.wait(math.random(4, 12) / 10)
-    end
-    print("[Office] Math loop berhenti!")
-end)
+function OfficeModule:Start()
+    if self.Running then return end
+    self.Running = true
+    print("[Office] Module Started!")
+    
+    task.spawn(function()
+        while self.Running do
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hum or not hrp then task.wait(1) continue end
 
-print("[Office] Auto jawab soal aktif!")
+            -- =================================================================
+            -- STEP 1: WALK KE KURSI + DUDUK
+            -- =================================================================
+            local closestSeat, closestDist = SeatPositions[1], math.huge
+            for _, pos in ipairs(SeatPositions) do
+                local dist = (hrp.Position - pos).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closestSeat = pos
+                end
+            end
 
--- =================================================================
--- STEP 3: AUTO KE PRINTER + HOLD (noclip, matiin 5 studs sebelum)
--- =================================================================
-RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
-    print("[Office] Assigned ke printer: " .. printerName)
+            local function tryDuduk()
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if obj:IsA("Seat") and (obj.Position - closestSeat).Magnitude < 2 then
+                        obj:Sit(hum)
+                        task.wait(0.5)
+                        if hum.Sit then
+                            print("[Office] Duduk berhasil!")
+                            return true
+                        end
+                    end
+                end
+                return false
+            end
 
-    -- Stop auto jawab soal
-    stopMath = true
-    print("[Office] Auto answer dimatiin!")
+            print("[Office] Jalan ke kursi...")
+            local duduk = false
+            for attempt = 1, 5 do
+                if not self.Running then break end
+                walkNoclip(closestSeat, 5)
+                task.wait(0.3)
+                duduk = tryDuduk()
+                if duduk then break end
+                
+                print("[Office] Belum duduk, mundur dulu... attempt #" .. attempt)
+                hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local backPos = hrp.Position + (hrp.Position - closestSeat).Unit * 5
+                    hum:MoveTo(backPos)
+                    task.wait(1.5)
+                end
+            end
 
-    local targetPos = Printers[printerName]
-    if not targetPos then
-        warn("[Office] Printer tidak dikenal: " .. printerName)
-        return
-    end
+            if not self.Running then break end
+            
+            if not duduk then
+                warn("[Office] Gagal duduk setelah 5 attempt, ulangi siklus...")
+                task.wait(2)
+                continue
+            end
 
-    -- Lompat dulu keluar kursi
-    print("[Office] Jump keluar kursi...")
-    jumpAndWait()
+            task.wait(1)
 
-    -- Walk ke printer pakai noclip, matiin 5 studs sebelum sampai
-    print("[Office] Jalan ke " .. printerName .. "...")
-    local hrp2
-    local dist
-    for attempt = 1, 4 do
-        walkNoclip(targetPos, 5)
-        
-        -- Pastikan sudah sampai baru hold
-        hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp2 then return end
-        dist = (hrp2.Position - targetPos).Magnitude
-        
-        if dist <= 4 then
-            break -- Berhasil sampai
-        else
-            warn("[Office] Nyangkut! Jarak: " .. math.floor(dist) .. ". Jump & retry " .. attempt .. "/4")
+            -- =================================================================
+            -- STEP 2: AUTO JAWAB SOAL
+            -- =================================================================
+            local mathState = { stop = false }
+            print("[Office] Auto jawab soal aktif!")
+            
+            task.spawn(function()
+                while self.Running and not mathState.stop do
+                    task.wait(0.3)
+                    jawabSoal(mathState)
+                    task.wait(math.random(4, 12) / 10)
+                end
+                print("[Office] Math loop berhenti!")
+            end)
+
+            -- =================================================================
+            -- STEP 3: TUNGGU ASSIGN PRINTER
+            -- =================================================================
+            local printerName
+            -- Gunakan loop kecil untuk ngecek event tanpa nge-block module stop
+            local bind = RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(name)
+                printerName = name
+            end)
+            
+            while self.Running and not printerName do
+                task.wait(0.5)
+            end
+            bind:Disconnect()
+            
+            if not self.Running then break end
+
+            print("[Office] Assigned ke printer: " .. printerName)
+            mathState.stop = true
+            print("[Office] Auto answer dimatiin!")
+
+            local targetPos = Printers[printerName]
+            if not targetPos then
+                warn("[Office] Printer tidak dikenal: " .. printerName)
+                task.wait(2)
+                continue
+            end
+
+            print("[Office] Jump keluar kursi...")
             jumpAndWait()
+
+            -- =================================================================
+            -- STEP 4: WALK KE PRINTER + HOLD
+            -- =================================================================
+            print("[Office] Jalan ke " .. printerName .. "...")
+            local hrp2
+            local dist
+            for attempt = 1, 4 do
+                if not self.Running then break end
+                walkNoclip(targetPos, 5)
+                
+                hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp2 then break end
+                dist = (hrp2.Position - targetPos).Magnitude
+                
+                if dist <= 4 then
+                    break -- Berhasil sampai
+                else
+                    warn("[Office] Nyangkut! Jarak: " .. math.floor(dist) .. ". Jump & retry " .. attempt .. "/4")
+                    jumpAndWait()
+                end
+            end
+
+            if not self.Running then break end
+
+            if dist and dist > 4 then
+                warn("[Office] Gagal sampai ke printer setelah retry! Ulangi siklus...")
+                task.wait(2)
+                continue
+            end
+
+            task.wait(0.3)
+            local prompt = Workspace.Computers[printerName].Part.ProximityPrompt
+            print("[Office] Hold printer...")
+            
+            local cam = Workspace.CurrentCamera
+            if cam and hrp2 then
+                cam.CameraType = Enum.CameraType.Scriptable
+                local back = hrp2.CFrame.LookVector * -10
+                local camPos = hrp2.Position + back + Vector3.new(0, 8, 0)
+                cam.CFrame = CFrame.new(camPos, targetPos)
+            end
+            task.wait(0.5)
+
+            prompt:InputHoldBegin()
+            task.wait(1.5)
+            prompt:InputHoldEnd()
+            
+            if cam then cam.CameraType = Enum.CameraType.Custom end
+            print("[Office] Printer Selesai! Kembali ke kursi...")
+            task.wait(1)
         end
-    end
+    end)
+end
 
-    if dist > 4 then
-        warn("[Office] Gagal sampai ke printer setelah retry!")
-        return
-    end
+function OfficeModule:Stop()
+    self.Running = false
+    print("[Office] Module Stopped!")
+end
 
-    -- Hold
-    task.wait(0.3)
-    local prompt = Workspace.Computers[printerName].Part.ProximityPrompt
-    print("[Office] Hold printer...")
-    
-    local cam = Workspace.CurrentCamera
-    if cam and hrp2 then
-        cam.CameraType = Enum.CameraType.Scriptable
-        -- Set kamera dinamis: 10 stud di belakang player, naik 8 stud, menghadap targetPos (Printer)
-        local back = hrp2.CFrame.LookVector * -10
-        local camPos = hrp2.Position + back + Vector3.new(0, 8, 0)
-        cam.CFrame = CFrame.new(camPos, targetPos)
-    end
-    task.wait(0.5)
-
-    prompt:InputHoldBegin()
-    task.wait(1.5)
-    prompt:InputHoldEnd()
-    
-    if cam then cam.CameraType = Enum.CameraType.Custom end
-    print("[Office] Selesai!")
-end)
-
-print("[Office] Auto Office dimulai!")
+return OfficeModule
