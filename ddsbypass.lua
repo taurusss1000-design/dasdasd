@@ -2,10 +2,6 @@ local getinfo = getinfo or debug.getinfo
 local DEBUG = false
 local Hooked = {}
 
--- DISABLE SEMUA PRINT & WARN BIAR GAK LAG PAS AFK LAMA
-local print = function() end
-local warn = function() end
-
 local Detected, Kill
 
 setthreadidentity(2)
@@ -2112,14 +2108,6 @@ local CourierTab = AutoJobTabSection:Tab({
     Border = true,
 })
 
-local OfficeTab = AutoJobTabSection:Tab({
-    Title = "Office Worker",
-    Icon = "briefcase",
-    IconColor = Color3.fromHex("#4CAF50"), -- Green
-    IconShape = "Square",
-    Border = true,
-})
-
 -- =============================================
 -- BARISTA (Inside BaristaTab)
 -- =============================================
@@ -2451,68 +2439,6 @@ task.spawn(function()
     end
     isWhCourierLoading = false
 end)
-
--- =============================================
--- OFFICE WORKER (Inside OfficeTab)
--- =============================================
-local OfficeModule
-do
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet(
-            "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua"
-        ))()
-    end)
-    if ok and result then
-        OfficeModule = result
-    else
-        warn("[Office] Gagal load moduloffice.lua dari Github! Error: " .. tostring(result))
-        warn("[Office] Pastikan file sudah di-upload ke Github repo!")
-        OfficeModule = { Start = function() end, Stop = function() end, Running = false }
-    end
-end
-
-local OfficeSection = OfficeTab:Section({ Title = "Auto Job Office", Box = true, TextXAlignment = "Center" })
-
-local officeToggle = OfficeSection:Toggle({
-    Title = "Auto Office Worker",
-    Value = false,
-    Callback = function(v)
-        if v then
-            -- 1. Ambil Job Office Worker
-            pcall(function()
-                game:GetService("ReplicatedStorage"):WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest")
-                    :FireServer("Office Worker", 11378976, 0, 0, "Detector")
-            end)
-            task.wait(1.5)
-
-            -- 2. Spawn Kendaraan
-            local SELECTED_CAR = SpawnCar.SelectedCar or "Yamahax-MioSporty"
-            pcall(function() ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR, 1) end)
-            task.wait(2)
-
-            -- 3. Tween ke lokasi Office
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local targetCF = CFrame.new(-5916.20, 4.63, -224.57)
-                local tweenInfo = TweenInfo.new(100, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCF})
-                tween:Play()
-                tween.Completed:Wait()
-                task.wait(1.5)
-                
-                -- Keluar dari kendaraan
-                jumpAndWait()
-                task.wait(1)
-            end
-
-            -- 4. Start Module
-            OfficeModule:Start()
-        else
-            OfficeModule:Stop()
-        end
-    end
-})
 
 task.spawn(function()
     task.wait(0.5)
