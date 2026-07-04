@@ -245,9 +245,22 @@ RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
     task.wait(0.3)
     local prompt = Workspace.Computers[printerName].Part.ProximityPrompt
     print("[Office] Hold printer...")
+    
+    local cam = Workspace.CurrentCamera
+    if cam and hrp2 then
+        cam.CameraType = Enum.CameraType.Scriptable
+        -- Set kamera dinamis: 10 stud di belakang player, naik 8 stud, menghadap targetPos (Printer)
+        local back = hrp2.CFrame.LookVector * -10
+        local camPos = hrp2.Position + back + Vector3.new(0, 8, 0)
+        cam.CFrame = CFrame.new(camPos, targetPos)
+    end
+    task.wait(0.5)
+
     prompt:InputHoldBegin()
     task.wait(1.5)
     prompt:InputHoldEnd()
+    
+    if cam then cam.CameraType = Enum.CameraType.Custom end
     print("[Office] Selesai!")
 end)
 
