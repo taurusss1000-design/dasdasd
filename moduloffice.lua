@@ -345,4 +345,4 @@ local function startOffice()
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai!")
+print("[Office] Auto Office Loop dimulai! v2")
