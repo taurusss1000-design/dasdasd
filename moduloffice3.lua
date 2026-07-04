@@ -107,6 +107,95 @@ local function jumpAndWait()
     task.wait(0.3)
 end
 
+local function findMyMotor()
+    local myName = LocalPlayer.Name
+    for _, v in pairs(Workspace:GetChildren()) do
+        if v.Name:match(myName) and v.Name:match("Montors") then
+            return v
+        end
+    end
+    return nil
+end
+
+local function rideMotor()
+    local motor = findMyMotor()
+    if not motor then return false end
+
+    local char = LocalPlayer.Character
+    if not char then return false end
+
+    local anims = motor:FindFirstChild("Anims")
+    if anims then
+        pcall(function() anims:FireServer("CreatePlayer", char) end)
+        task.wait(0.2)
+        pcall(function() anims:FireServer("RegisterPlayer", char) end)
+        task.wait(0.2)
+    end
+
+    local kickstand = motor:FindFirstChild("Kickstand")
+    if kickstand then
+        pcall(function() kickstand:FireServer("StandUp", 0, 0, 0, 0, false) end)
+        task.wait(0.2)
+    end
+
+    local driveSeat = motor:FindFirstChild("DriveSeat", true)
+    if driveSeat then
+        pcall(function()
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = driveSeat.CFrame end
+            driveSeat:Sit(char:FindFirstChildOfClass("Humanoid"))
+        end)
+    end
+    return true
+end
+
+local function _tweenVehicle(vehicle, targetCFrame, duration)
+    local TweenService = game:GetService("TweenService")
+    
+    local mainPart = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+    if not mainPart then return end
+    
+    local parts = {}
+    local originalAnchored = {}
+    local tempWelds = {}
+    
+    for _, part in ipairs(vehicle:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(parts, part)
+            originalAnchored[part] = part.Anchored
+        end
+    end
+    
+    mainPart.Anchored = true
+    for _, part in ipairs(parts) do
+        if part ~= mainPart then
+            part.Anchored = false
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = mainPart
+            weld.Part1 = part
+            weld.Parent = mainPart
+            table.insert(tempWelds, weld)
+        end
+    end
+    
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(mainPart, tweenInfo, { CFrame = targetCFrame })
+    tween:Play()
+    tween.Completed:Wait()
+    
+    for _, weld in ipairs(tempWelds) do
+        weld:Destroy()
+    end
+    
+    for _, part in ipairs(parts) do 
+        pcall(function()
+            part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        end)
+        part.Anchored = originalAnchored[part] or false
+    end
+end
+
 local function jawabSoal(stopTable)
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     local WorkGui = playerGui:WaitForChild("WorkGui")
@@ -156,6 +245,38 @@ function OfficeModule:Start()
     print("[Office] Module Started!")
     
     task.spawn(function()
+        -- 1. Ambil Job Office Worker
+        print("[Office] Mengambil job Office Worker...")
+        pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest")
+                :FireServer("Office Worker", 11378976, 0, 0, "Detector")
+        end)
+        task.wait(1.5)
+
+        -- 2. Spawn Kendaraan
+        local SELECTED_CAR = (_G.SpawnCar and _G.SpawnCar.SelectedCar) or "Yamahax-MioSporty"
+        if SELECTED_CAR == "Refresh dulu..." then SELECTED_CAR = "Yamahax-MioSporty" end
+        print("[Office] Spawning kendaraan: " .. SELECTED_CAR)
+        pcall(function() RS:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR, 1) end)
+        task.wait(4)
+
+        -- 3. Naik kendaraan dan tween ke lokasi office
+        print("[Office] Naik kendaraan...")
+        rideMotor()
+        task.wait(1)
+
+        local motor = findMyMotor()
+        if motor then
+            print("[Office] Tweening ke lokasi office...")
+            local TWEEN_DURATION = 15 -- Sesuaikan waktu tween (detik) jika perlu
+            _tweenVehicle(motor, CFrame.new(Vector3.new(-5935, 4, -250)), TWEEN_DURATION)
+        end
+        task.wait(0.5)
+
+        print("[Office] Turun dari kendaraan...")
+        jumpAndWait()
+        task.wait(1)
+
         while self.Running do
             local char = LocalPlayer.Character
             local hum = char and char:FindFirstChildOfClass("Humanoid")
