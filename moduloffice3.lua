@@ -28,6 +28,7 @@ local Printers = {
 }
 
 local OfficeModule = {}
+OfficeModule.totalCycle = 0
 local officeRunning = false
 
 local RetryOffsets = {
@@ -264,6 +265,8 @@ local function holdPrinterUntilSuccess(printerName, targetPos)
 
         if printSuccess then
             print("[Office] Print berhasil! Lanjut loop...")
+            OfficeModule.totalCycle = (OfficeModule.totalCycle or 0) + 1
+            if OfficeModule.onCycle then pcall(OfficeModule.onCycle) end
             return true
         else
             warn("[Office] Print belum berhasil (notif 7 tidak muncul), walk + hold ulang...")
