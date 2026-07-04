@@ -109,68 +109,145 @@ end
 
 -- =================================================================
 -- PERSISTENT WALK KE PRINTER
--- Terus paksa MoveTo + noclip sampai beneran nyampe
--- Tidak bisa dihentikan oleh gerakan player
+-- Acuan jarak: 1 stud
+-- Kalau duduk kursi lain saat jalan -> jump doang, lanjut MoveTo
 -- =================================================================
-local function persistentWalkToPrinter(targetPos, arrivedRadius)
-    arrivedRadius = arrivedRadius or 3.5
+local function persistentWalkToPrinter(targetPos)
     local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return false end
 
-    print("[Office] Persistent walk ke printer dimulai...")
+    print("[Office] Walk ke printer dimulai...")
 
-    -- Noclip aktif selama perjalanan
     local noclipConn = enableNoclip(char)
-
-    -- Loop paksa MoveTo terus setiap 0.2 detik
-    -- Tidak peduli player gerak, script tetap paksa balik ke printer
-    local arrived = false
-    local timeout = tick() + 60  -- max 60 detik
+    local arrived    = false
+    local timeout    = tick() + 60
 
     while not arrived and tick() < timeout do
         hrp = char:FindFirstChild("HumanoidRootPart")
         hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then break end
 
-        -- Kalau nyangkut duduk di kursi lain, langsung paksa berdiri + jump
+        -- Kalau nyangkut duduk kursi lain -> jump aja, cukup
         if hum.Sit then
-            warn("[Office] Kena duduk kursi lain! Force stand up...")
-            hum.Sit = false
-            task.wait(0.1)
-            -- Kalau masih duduk, jump paksa
-            if hum.Sit then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                task.wait(0.3)
-            end
-            -- Angkat posisi karakter sedikit biar lepas dari seat
-            if hrp then
-                hrp.CFrame = hrp.CFrame * CFrame.new(0, 3, 0)
-            end
-            task.wait(0.3)
+            warn("[Office] Nyangkut duduk saat jalan! Jump...")
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            task.wait(0.4)
         end
 
         local dist = (hrp.Position - targetPos).Magnitude
-        if dist <= arrivedRadius then
+        if dist <= 1 then
             arrived = true
-            print("[Office] Printer tercapai! dist: " .. string.format("%.1f", dist))
+            print("[Office] Printer tercapai! dist: " .. string.format("%.2f", dist))
             break
         end
 
-        -- Paksa MoveTo setiap tick — ini yang bikin ga bisa distop player
         hum:MoveTo(targetPos)
         task.wait(0.2)
     end
 
-    -- Matikan noclip setelah sampai
     disableNoclip(char, noclipConn)
 
     if not arrived then
-        warn("[Office] Timeout! Gagal sampai ke printer dalam 60 detik.")
+        warn("[Office] Timeout walk ke printer!")
     end
 
     return arrived
+end
+
+-- =================================================================
+-- HOLD PRINTER SAMPAI NOTIF 7 MUNCUL (berhasil)
+-- Kalau belum muncul -> walk lagi + hold lagi
+-- =================================================================
+local function holdPrinterUntilSuccess(printerName, targetPos)
+    local Notif = RS:WaitForChild("Notification"):WaitForChild("Notifications")
+
+    while officeRunning do
+        -- Walk ke printer sampai 1 stud
+        local ok = persistentWalkToPrinter(targetPos)
+        if not ok then
+            warn("[Office] Gagal walk ke printer, retry...")
+            task.wait(1)
+            continue
+        end
+
+        task.wait(0.2)
+
+        -- Set camera agar prompt aktif
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local cam = Workspace.CurrentCamera
+        if cam and hrp then
+            cam.CameraType = Enum.CameraType.Scriptable
+            local back = hrp.CFrame.LookVector * -10
+            cam.CFrame = CFrame.new(hrp.Position + back + Vector3.new(0, 8, 0), targetPos)
+        end
+        task.wait(0.2)
+
+        -- Tunggu prompt enabled
+        local prompt = Workspace.Computers[printerName].Part.ProximityPrompt
+        local waitT = tick()
+        while not prompt.Enabled and tick() - waitT < 8 do
+            task.wait(0.1)
+        end
+
+        if not prompt.Enabled then
+            warn("[Office] Prompt belum aktif, retry walk...")
+            if cam then cam.CameraType = Enum.CameraType.Custom end
+            task.wait(0.5)
+            continue
+        end
+
+        -- Listen notif 7 = print berhasil
+        local printSuccess = false
+        local notifConn
+        notifConn = Notif.OnClientEvent:Connect(function(notifType, msg, id)
+            if id == 7 then
+                printSuccess = true
+                print("[Office] Notif 7 diterima: " .. tostring(msg))
+                notifConn:Disconnect()
+            end
+        end)
+
+        -- Hold printer
+        local holdDur = prompt.HoldDuration or 1.5
+        print("[Office] Hold printer (" .. holdDur .. "s)...")
+        prompt:InputHoldBegin()
+
+        -- Tunggu selama hold berlangsung
+        -- Kalau character duduk saat hold, jump aja
+        local holdStart = tick()
+        while tick() - holdStart < holdDur + 0.5 do
+            local hChar = LocalPlayer.Character
+            local hHum  = hChar and hChar:FindFirstChildOfClass("Humanoid")
+            if hHum and hHum.Sit then
+                hHum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+            task.wait(0.1)
+        end
+
+        prompt:InputHoldEnd()
+
+        -- Tunggu notif 7 max 3 detik setelah InputHoldEnd
+        local waitNotif = tick()
+        while not printSuccess and tick() - waitNotif < 3 do
+            task.wait(0.1)
+        end
+
+        pcall(function() notifConn:Disconnect() end)
+
+        if cam then cam.CameraType = Enum.CameraType.Custom end
+
+        if printSuccess then
+            print("[Office] Print berhasil! Lanjut loop...")
+            return true
+        else
+            warn("[Office] Print belum berhasil (notif 7 tidak muncul), walk + hold ulang...")
+            task.wait(0.5)
+        end
+    end
+
+    return false
 end
 
 -- =================================================================
@@ -193,7 +270,6 @@ local function startOffice()
             end
         end
 
-        -- Cari objek Seat terdekat dari closestSeat
         local function findSeatObject()
             for _, obj in ipairs(Workspace:GetDescendants()) do
                 if obj:IsA("Seat") and (obj.Position - closestSeat).Magnitude < 2 then
@@ -206,19 +282,15 @@ local function startOffice()
         -- Aggressive sit: jalan ke kursi sambil terus coba Sit() setiap 0.1 detik
         local function aggressiveSit(seatObj, targetPos)
             local noclipConn = enableNoclip(char)
-            local arrived = false
-            local timeout = tick() + 15  -- max 15 detik
+            local timeout = tick() + 15
 
             while not hum.Sit and tick() < timeout do
                 hrp = char:FindFirstChild("HumanoidRootPart")
                 if not hrp then break end
 
                 local dist = (hrp.Position - targetPos).Magnitude
-
-                -- Terus paksa MoveTo ke kursi
                 hum:MoveTo(targetPos)
 
-                -- Kalau sudah cukup dekat, langsung coba Sit()
                 if dist <= 4 then
                     pcall(function() seatObj:Sit(hum) end)
                 end
@@ -239,7 +311,6 @@ local function startOffice()
             duduk = aggressiveSit(seatObj, closestSeat)
         end
 
-        -- Fallback: kalau aggressive sit gagal, coba walk manual biasa
         if not duduk then
             warn("[Office] Aggressive sit gagal, fallback walk manual...")
             for attempt = 1, 5 do
@@ -329,59 +400,30 @@ local function startOffice()
         repeat task.wait(0.5) until printerAssigned ~= nil or not officeRunning
         if not officeRunning then break end
 
-        -- STEP 3: Ke printer + hold
-        local targetPos = Printers[printerAssigned]
-        if not targetPos then
-            warn("[Office] Printer tidak dikenal!")
-            task.wait(2)
-            continue
-        end
-
+        -- STEP 3: Jump keluar kursi
         print("[Office] Jump keluar kursi...")
         jumpAndWait()
 
-        -- Pastikan karakter bener-bener udah turun dari kursi
         local hum2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum2 and hum2.Sit then
-            hum2.Sit = false
+            hum2:ChangeState(Enum.HumanoidStateType.Jumping)
             task.wait(0.5)
         end
 
-        print("[Office] Persistent walk ke " .. printerAssigned .. "...")
-
-        -- Ini yang fix: persistent loop, ga bisa dihentikan oleh player
-        local berhasil = persistentWalkToPrinter(targetPos, 3.5)
-
-        if not berhasil then
-            warn("[Office] Gagal sampai ke printer, retry dari awal...")
+        -- STEP 4: Walk + hold printer sampai notif 7 (berhasil)
+        local targetPos = Printers[printerAssigned]
+        if not targetPos then
+            warn("[Office] Printer tidak dikenal: " .. tostring(printerAssigned))
             task.wait(2)
             continue
         end
 
-        task.wait(0.3)
+        print("[Office] Menuju " .. printerAssigned .. "...")
+        holdPrinterUntilSuccess(printerAssigned, targetPos)
 
-        -- Setup kamera agar prompt terjangkau
-        local hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local cam = Workspace.CurrentCamera
-        if cam and hrp2 then
-            cam.CameraType = Enum.CameraType.Scriptable
-            local back = hrp2.CFrame.LookVector * -10
-            local camPos = hrp2.Position + back + Vector3.new(0, 8, 0)
-            cam.CFrame = CFrame.new(camPos, targetPos)
-        end
-        task.wait(0.5)
-
-        local prompt = Workspace.Computers[printerAssigned].Part.ProximityPrompt
-        print("[Office] Hold printer...")
-        prompt:InputHoldBegin()
         task.wait(1.5)
-        prompt:InputHoldEnd()
-
-        if cam then cam.CameraType = Enum.CameraType.Custom end
-        print("[Office] Print selesai! Ngulang dari awal...")
-        task.wait(2)
     end
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai! v4")
+print("[Office] Auto Office Loop dimulai! v5")
