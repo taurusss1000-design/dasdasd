@@ -27,7 +27,8 @@ local Printers = {
     ["Print_5"] = Vector3.new(-5868.43, 4.58, -249.96),
 }
 
-local officeRunning = true
+local OfficeModule = {}
+local officeRunning = false
 
 local RetryOffsets = {
     Vector3.new(0, 0, 10),
@@ -444,5 +445,21 @@ local function startOffice()
     end
 end
 
-task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai! v7")
+function OfficeModule:Start()
+    if officeRunning then return end
+    officeRunning = true
+    task.spawn(startOffice)
+    print("[Office] Auto Office Module Started!")
+end
+
+function OfficeModule:Stop()
+    officeRunning = false
+    print("[Office] Auto Office Module Stopped!")
+end
+
+function OfficeModule:IsRunning()
+    return officeRunning
+end
+
+print("[Office Module] Loaded! Gunakan OfficeModule:Start() untuk mulai.")
+return OfficeModule
