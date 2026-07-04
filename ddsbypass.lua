@@ -1997,6 +1997,57 @@ function sendCourierWebhook()
     end)
 end
 
+local whOfficeConfigPath = "DDS_WebhookOfficeConfig.json"
+local function loadOfficeWebhookConfig()
+    local ok, data = pcall(readfile, whOfficeConfigPath)
+    if ok and data then
+        local ok2, decoded = pcall(function() return HttpService:JSONDecode(data) end)
+        if ok2 then return decoded end
+    end
+    return {}
+end
+local function saveOfficeWebhookConfig(data) pcall(writefile, whOfficeConfigPath, HttpService:JSONEncode(data)) end
+local whOfficeConfig      = loadOfficeWebhookConfig()
+local isWhOfficeLoading   = true
+local webhookOfficeURL    = whOfficeConfig.URL    or ""
+local webhookOfficeActive = whOfficeConfig.Active or false
+local uangAwalOffice      = nil
+
+function sendOfficeWebhook()
+    if not webhookOfficeActive or webhookOfficeURL == "" then return end
+    local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+    local moneyLabel  = nil
+    pcall(function() moneyLabel = PlayerGui.MainUI.Frame4.TextLabel end)
+    if not moneyLabel then return end
+    
+    local uangSekarangNum = parseUang(moneyLabel.Text)
+    if uangAwalOffice == nil then uangAwalOffice = uangSekarangNum end
+    local profit = uangSekarangNum - uangAwalOffice
+    local cycle = OfficeModule.totalCycle or 0
+
+    local payload = {
+        embeds = {{
+            title       = "💼 Office Job - Monitoring Profit",
+            description = "**Status:** `✅ Farming Office Aktif`",
+            color       = 16766720,
+            fields      = {
+                { name = "💵 Uang Awal",    value = "**" .. formatUang(uangAwalOffice) .. "**",     inline = false },
+                { name = "💰 Uang Sekarang",value = "**" .. formatUang(uangSekarangNum) .. "**", inline = false },
+                { name = "📈 Total Profit", value = "```diff\n+ " .. formatUang(profit) .. "\n```", inline = false },
+                { name = "🔄 Total Cycle",  value = "**" .. tostring(cycle) .. "x**",        inline = false },
+            },
+            footer = { text = "DDS Premium Script   Time: " .. os.date("%H:%M:%S") }
+        }}
+    }
+    local body = HttpService:JSONEncode(payload)
+    task.spawn(function()
+        pcall(function()
+            if syn and syn.request then syn.request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
+            elseif request then request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body }) end
+        end)
+    end)
+end
+
 local function sendWebhookRepairEvent(msg)
     if not webhookActive or webhookURL == "" then return end
     local payload = {
@@ -2041,6 +2092,8 @@ end
 local OfficeModule = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua"
 ))()
+
+OfficeModule.onCycle = sendOfficeWebhook
 
 
 
@@ -2156,6 +2209,100 @@ OfficeToggle = JobSectionOffice:Toggle({
         end
     end
 })
+
+OfficeWebhookSection = OfficeTab:Section({ Title = "Discord Webhook Office", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
+
+whOfficeUrlInput = OfficeWebhookSection:Input({
+    Type = "Input",
+    Title = "Webhook URL",
+    Value = whOfficeConfig.URL or "",
+    Placeholder = "https://discord.com/api/webhooks/...",
+    Callback = function(v)
+        webhookOfficeURL = v
+        if not isWhOfficeLoading then
+            whOfficeConfig.URL = v
+            saveOfficeWebhookConfig(whOfficeConfig)
+            print("Webhook Office URL disimpan!")
+        end
+    end
+})
+
+OfficeWebhookSection:Button({
+    Title = "Test Office Webhook",
+    Callback = function()
+        if webhookOfficeURL == "" then
+            print("Masukkan webhook URL dulu!")
+            return
+        end
+        local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+        local moneyLabel = nil
+        pcall(function() moneyLabel = PlayerGui.MainUI.Frame4.TextLabel end)
+        
+        if moneyLabel then
+            local uangSekarang = parseUang(moneyLabel.Text)
+            if uangAwalOffice == nil then uangAwalOffice = uangSekarang end
+            local profit = uangSekarang - uangAwalOffice
+            local cycle = OfficeModule.totalCycle or 0
+            
+            local payload = {
+                embeds = {{
+                    title       = "💼 Office Job - Test Webhook",
+                    description = "**Status:** `✅ Test Connection`",
+                    color       = 16766720,
+                    fields      = {
+                        { name = "💵 Uang Awal",    value = "**" .. formatUang(uangAwalOffice) .. "**",     inline = false },
+                        { name = "💰 Uang Sekarang",value = "**" .. formatUang(uangSekarang) .. "**", inline = false },
+                        { name = "📈 Total Profit", value = "```diff\n+ " .. formatUang(profit) .. "\n```", inline = false },
+                        { name = "🔄 Total Cycle",  value = "**" .. tostring(cycle) .. "x**",        inline = false },
+                    },
+                    footer = { text = "DDS Premium Script   Time: " .. os.date("%H:%M:%S") }
+                }}
+            }
+            local body = HttpService:JSONEncode(payload)
+            task.spawn(function()
+                pcall(function()
+                    if syn and syn.request then syn.request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
+                    elseif request then request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body }) end
+                end)
+            end)
+        else
+            print("Gagal membaca uang dari UI!")
+        end
+    end
+})
+
+whOfficeToggle = OfficeWebhookSection:Toggle({
+    Title = "Aktifkan Webhook Office",
+    Value = false,
+    Callback = function(v)
+        webhookOfficeActive = v
+        if not isWhOfficeLoading then
+            whOfficeConfig.Active = v
+            saveOfficeWebhookConfig(whOfficeConfig)
+            
+            if v then
+                local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+                local moneyLabel = nil
+                pcall(function() moneyLabel = PlayerGui.MainUI.Frame4.TextLabel end)
+                if moneyLabel then
+                    uangAwalOffice = parseUang(moneyLabel.Text)
+                    OfficeModule.totalCycle = 0
+                    print("Webhook Office aktif! Uang awal: " .. formatUang(uangAwalOffice))
+                end
+            else
+                print("Webhook Office dimatikan!")
+            end
+        end
+    end
+})
+
+task.spawn(function()
+    task.wait(0.5)
+    if whOfficeConfig.Active then
+        whOfficeToggle:Set(true)
+    end
+    isWhOfficeLoading = false
+end)
 
 
 
