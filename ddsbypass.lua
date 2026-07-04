@@ -2141,6 +2141,19 @@ end
 local bCfg       = loadBaristaConfig()
 local isBLoading = true
 
+local officeConfigPath = "DDS_OfficeConfig.json"
+local function loadOfficeConfig()
+    local ok, data = pcall(readfile, officeConfigPath)
+    if ok and data then
+        local ok2, decoded = pcall(function() return HttpService:JSONDecode(data) end)
+        if ok2 and decoded then return decoded end
+    end
+    return {}
+end
+local function saveOfficeConfig(data) pcall(writefile, officeConfigPath, HttpService:JSONEncode(data)) end
+local oCfg       = loadOfficeConfig()
+local isOLoading = true
+
 -- Apply saved config ke module
 if bCfg.TimeoutMax     then BaristaModule.timeoutMax     = bCfg.TimeoutMax     end
 if bCfg.TimeoutEnabled ~= nil then BaristaModule.timeoutEnabled = bCfg.TimeoutEnabled end
@@ -2198,9 +2211,9 @@ OfficeToggle = JobSectionOffice:Toggle({
     Title = "Auto Office",
     Value = false,
     Callback = function(on)
-        if not isBLoading then
-            bCfg.AutoOffice = on
-            saveBaristaConfig(bCfg)
+        if not isOLoading then
+            oCfg.AutoOffice = on
+            saveOfficeConfig(oCfg)
         end
         if on then
             OfficeModule:Start()
@@ -3524,8 +3537,9 @@ task.spawn(function()
     if bCfg.TimeoutEnabled   then restartToggle:Set(true)  end
     if bCfg.KickLimitEnabled then kickToggle:Set(true)     end
     if bCfg.AutoBarista      then baristaToggle:Set(true)  end
-    if bCfg.AutoOffice       then OfficeToggle:Set(true)   end
+    if oCfg.AutoOffice       then OfficeToggle:Set(true)   end
     isBLoading = false
+    isOLoading = false
 
     -- Restore Auto Reconnect & Execute (config lama)
     if settingsConfig.AutoReconnect then reconnectToggle:Set(true) end
