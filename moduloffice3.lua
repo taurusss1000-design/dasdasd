@@ -274,10 +274,126 @@ local function holdPrinterUntilSuccess(printerName, targetPos)
     return false
 end
 
+local function findCourierMotor()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local closest, closestDist = nil, 50
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model:FindFirstChild("DriveSeat", true) then
+            local mp = model.PrimaryPart
+            if mp and (mp.Position - hrp.Position).Magnitude < closestDist then
+                closestDist = (mp.Position - hrp.Position).Magnitude
+                closest     = model
+            end
+        end
+    end
+    return closest
+end
+
+local function rideCourierMotor()
+    local motor = findCourierMotor()
+    if not motor then return end
+    local char      = LocalPlayer.Character
+    local driveSeat = motor:FindFirstChild("DriveSeat", true)
+    if driveSeat then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = driveSeat.CFrame end
+        driveSeat:Sit(char:FindFirstChildOfClass("Humanoid"))
+    end
+    task.wait(0.5)
+end
+
+local function _tweenVehicle(vehicle, targetCFrame, duration)
+    local TweenService = game:GetService("TweenService")
+    
+    local mainPart = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+    if not mainPart then return end
+    
+    local parts = {}
+    local originalAnchored = {}
+    local tempWelds = {}
+    
+    for _, part in ipairs(vehicle:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(parts, part)
+            originalAnchored[part] = part.Anchored
+        end
+    end
+    
+    -- Anchor mainPart, unanchor sisanya dan pasang WeldConstraint sementara
+    mainPart.Anchored = true
+    for _, part in ipairs(parts) do
+        if part ~= mainPart then
+            part.Anchored = false
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = mainPart
+            weld.Part1 = part
+            weld.Parent = mainPart
+            table.insert(tempWelds, weld)
+        end
+    end
+    
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(mainPart, tweenInfo, { CFrame = targetCFrame })
+    tween:Play()
+    tween.Completed:Wait()
+    
+    -- Hapus weld sementara
+    for _, weld in ipairs(tempWelds) do
+        weld:Destroy()
+    end
+    
+    -- Kembalikan state awal dan amankan physics
+    for _, part in ipairs(parts) do 
+        pcall(function()
+            part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        end)
+        part.Anchored = originalAnchored[part] or false
+    end
+end
+
 -- =================================================================
 -- MAIN LOOP
 -- =================================================================
 local function startOffice()
+    print("[Office] Setting job to Office Worker...")
+    pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest"):FireServer("Office Worker", 11378976, 0, 0, "Detector")
+    end)
+    task.wait(1.5)
+    
+    if not officeRunning then return end
+
+    local SELECTED_CAR = (_G.SpawnCar and _G.SpawnCar.SelectedCar and _G.SpawnCar.SelectedCar ~= "Refresh dulu...") and _G.SpawnCar.SelectedCar or "Yamahax-MioSporty"
+    
+    print("[Office] Spawning car...")
+    pcall(function()
+        RS:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR)
+    end)
+    task.wait(4)
+    
+    if not officeRunning then return end
+    
+    print("[Office] Riding car...")
+    rideCourierMotor()
+    task.wait(1)
+    
+    if not officeRunning then return end
+    
+    local motor = findCourierMotor()
+    if motor then
+        print("[Office] Tweening to location...")
+        _tweenVehicle(motor, CFrame.new(-5905.29, 4.63, -251.97), 30)
+    end
+    
+    task.wait(1)
+    if not officeRunning then return end
+    
+    print("[Office] Exiting vehicle...")
+    jumpAndWait()
+    task.wait(1.5)
+
     while officeRunning do
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
