@@ -125,7 +125,7 @@ WindUI:SetTheme("MachTheme")
 
 Window:Tag({ Title = "PREMIUM", Color = Mains })
 Window:Tag({ Title = "BETA", Color = Purple })
-Window:Tag({ Title = "V1.2", Color = Purple })
+Window:Tag({ Title = "V1.3", Color = Purple })
 
 local TweenService = game:GetService("TweenService")
 local protectGui
@@ -2292,7 +2292,7 @@ whOfficeToggle = OfficeWebhookSection:Toggle({
         if not isWhOfficeLoading then
             whOfficeConfig.Active = v
             saveOfficeWebhookConfig(whOfficeConfig)
-            
+
             if v then
                 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
                 local moneyLabel = nil
@@ -2302,7 +2302,50 @@ whOfficeToggle = OfficeWebhookSection:Toggle({
                     OfficeModule.totalCycle = 0
                     print("Webhook Office aktif! Uang awal: " .. formatUang(uangAwalOffice))
                 end
+
+                -- INI YANG KURANG: set onCycle biar auto kirim tiap print selesai
+                OfficeModule.onCycle = function()
+                    if not webhookOfficeActive or webhookOfficeURL == "" then return end
+                    local pGui = LocalPlayer:WaitForChild("PlayerGui")
+                    local mLabel = nil
+                    pcall(function() mLabel = pGui.MainUI.Frame4.TextLabel end)
+                    if not mLabel then return end
+
+                    local uangSekarang = parseUang(mLabel.Text)
+                    if uangAwalOffice == nil then uangAwalOffice = uangSekarang end
+                    local profit = uangSekarang - uangAwalOffice
+                    local cycle  = OfficeModule.totalCycle or 0
+
+                    local payload = {
+                        embeds = {{
+                            title       = "💼 Office Job - Cycle Selesai",
+                            description = "**Status:** `✅ Print Berhasil`",
+                            color       = 3066993,
+                            fields      = {
+                                { name = "💵 Uang Awal",     value = "**" .. formatUang(uangAwalOffice) .. "**",     inline = false },
+                                { name = "💰 Uang Sekarang", value = "**" .. formatUang(uangSekarang) .. "**",       inline = false },
+                                { name = "📈 Total Profit",  value = "```diff\n+ " .. formatUang(profit) .. "\n```", inline = false },
+                                { name = "🔄 Total Cycle",   value = "**" .. tostring(cycle) .. "x**",               inline = false },
+                            },
+                            footer = { text = "DDS Premium Script   Time: " .. os.date("%H:%M:%S") }
+                        }}
+                    }
+                    local body = HttpService:JSONEncode(payload)
+                    task.spawn(function()
+                        pcall(function()
+                            if syn and syn.request then
+                                syn.request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
+                            elseif request then
+                                request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
+                            end
+                        end)
+                    end)
+                    print("[Office] Webhook terkirim! Cycle #" .. tostring(cycle))
+                end
+
             else
+                -- Matikan onCycle saat toggle off
+                OfficeModule.onCycle = nil
                 print("Webhook Office dimatikan!")
             end
         end
