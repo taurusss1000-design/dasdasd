@@ -2090,7 +2090,7 @@ end
 -- AUTO JOB Office Loader
 -- =============================================
 local OfficeModule = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua"
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua?t=" .. tostring(tick())
 ))()
 
 OfficeModule.onCycle = sendOfficeWebhook
@@ -2105,7 +2105,7 @@ OfficeModule.onCycle = sendOfficeWebhook
 
 -- ① Load module dari GitHub
 local BaristaModule = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/modulbarista.lua"
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/modulbarista.lua?t=" .. tostring(tick())
 ))()
 
 -- ② Sambungkan webhook repair & kick event dari dds.lua ke module
@@ -2889,7 +2889,7 @@ local AutoRejoin = (function()
     -- URL script yang akan di-execute otomatis setelah rejoin
     -- WARNING: Ganti SCRIPT_URL dengan URL script UTAMA (misal pastebin/github raw cobadds.lua lo)
     -- JANGAN pakai URL vyperui.lua karena itu cuma UI-nya saja!
-    local SCRIPT_URL = "https://raw.githubusercontent.com/AwoakwoakSikat/emangbowleh/refs/heads/main/loader-news.lua" 
+    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/ddsbypass.lua" 
     local EXEC_DELAY = 30 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
 
     -- Cari queue_on_teleport dari berbagai executor secara aman
