@@ -2147,7 +2147,7 @@ OfficeToggle = JobSectionOffice:Toggle({
     Callback = function(on)
         if not isBLoading then
             bCfg.AutoOffice = on
-            saveOfficeConfig(bCfg)
+            saveBaristaConfig(bCfg)
         end
         if on then
             OfficeModule:Start()
@@ -3377,6 +3377,7 @@ task.spawn(function()
     if bCfg.TimeoutEnabled   then restartToggle:Set(true)  end
     if bCfg.KickLimitEnabled then kickToggle:Set(true)     end
     if bCfg.AutoBarista      then baristaToggle:Set(true)  end
+    if bCfg.AutoOffice       then OfficeToggle:Set(true)   end
     isBLoading = false
 
     -- Restore Auto Reconnect & Execute (config lama)
