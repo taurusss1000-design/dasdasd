@@ -29,6 +29,14 @@ local Printers = {
 
 local officeRunning = true
 
+-- Arah retry duduk: depan, kanan, kiri, belakang
+local RetryOffsets = {
+    Vector3.new(0, 0, 10),   -- depan
+    Vector3.new(10, 0, 0),   -- kanan
+    Vector3.new(-10, 0, 0),  -- kiri
+    Vector3.new(0, 0, -10),  -- belakang
+}
+
 -- =================================================================
 -- HELPERS
 -- =================================================================
@@ -133,18 +141,23 @@ local function startOffice()
 
         print("[Office] Jalan ke kursi...")
         local duduk = false
-        for attempt = 1, 5 do
+
+        for attempt = 1, 8 do
+            if not officeRunning then break end
             walkNoclip(closestSeat, 5)
             task.wait(0.3)
             duduk = tryDuduk()
             if duduk then break end
-            print("[Office] Belum duduk, mundur dulu... attempt #" .. attempt)
+
+            -- Belum duduk, coba mundur ke arah yang berbeda tiap attempt
             hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local backPos = hrp.Position + (hrp.Position - closestSeat).Unit * 5
-                hum:MoveTo(backPos)
-                task.wait(1.5)
-            end
+            if not hrp then break end
+
+            local offset = RetryOffsets[((attempt - 1) % #RetryOffsets) + 1]
+            local backPos = hrp.Position + offset
+            print("[Office] Belum duduk, geser ke offset " .. tostring(offset) .. " attempt #" .. attempt)
+            hum:MoveTo(backPos)
+            task.wait(1.5)
         end
 
         if not duduk then
@@ -260,11 +273,9 @@ local function startOffice()
 
         if cam then cam.CameraType = Enum.CameraType.Custom end
         print("[Office] Print selesai! Ngulang dari awal...")
-
-        task.wait(2) -- jeda sebelum ngulang
+        task.wait(2)
     end
 end
 
--- Jalanin
 task.spawn(startOffice)
 print("[Office] Auto Office Loop dimulai!")
