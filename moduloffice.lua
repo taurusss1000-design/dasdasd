@@ -230,14 +230,26 @@ RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
 
     -- Walk ke printer pakai noclip, matiin 5 studs sebelum sampai
     print("[Office] Jalan ke " .. printerName .. "...")
-    walkNoclip(targetPos, 5)
+    local hrp2
+    local dist
+    for attempt = 1, 4 do
+        walkNoclip(targetPos, 5)
+        
+        -- Pastikan sudah sampai baru hold
+        hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp2 then return end
+        dist = (hrp2.Position - targetPos).Magnitude
+        
+        if dist <= 4 then
+            break -- Berhasil sampai
+        else
+            warn("[Office] Nyangkut! Jarak: " .. math.floor(dist) .. ". Jump & retry " .. attempt .. "/4")
+            jumpAndWait()
+        end
+    end
 
-    -- Pastikan sudah sampai baru hold
-    local hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp2 then return end
-    local dist = (hrp2.Position - targetPos).Magnitude
     if dist > 4 then
-        warn("[Office] Gagal sampai ke printer, dist: " .. math.floor(dist))
+        warn("[Office] Gagal sampai ke printer setelah retry!")
         return
     end
 
