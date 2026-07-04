@@ -29,12 +29,11 @@ local Printers = {
 
 local officeRunning = true
 
--- Arah retry duduk: depan, kanan, kiri, belakang
 local RetryOffsets = {
-    Vector3.new(0, 0, 10),   -- depan
-    Vector3.new(10, 0, 0),   -- kanan
-    Vector3.new(-10, 0, 0),  -- kiri
-    Vector3.new(0, 0, -10),  -- belakang
+    Vector3.new(0, 0, 10),
+    Vector3.new(10, 0, 0),
+    Vector3.new(-10, 0, 0),
+    Vector3.new(0, 0, -10),
 }
 
 -- =================================================================
@@ -77,7 +76,10 @@ local function walkNoclip(targetPos, stopRadius)
         hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then break end
         local dist = (hrp.Position - targetPos).Magnitude
-        if dist <= 3 then print("[Walk] Sampai! dist: " .. math.floor(dist)) break end
+        if dist <= 3 then
+            print("[Walk] Sampai! dist: " .. math.floor(dist))
+            break
+        end
         hum:MoveTo(targetPos)
         local t = tick()
         repeat
@@ -103,6 +105,47 @@ local function jumpAndWait()
         task.wait(0.1)
     end
     task.wait(0.3)
+end
+
+local function walkKePrinter(targetPos)
+    local hrp, dist
+    for attempt = 1, 8 do
+        walkNoclip(targetPos, 5)
+        hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return false end
+        dist = (hrp.Position - targetPos).Magnitude
+
+        if dist <= 4 then
+            print("[Office] Sampai di printer! dist: " .. math.floor(dist))
+            return true
+        end
+
+        warn("[Office] Belum sampai printer! dist: " .. math.floor(dist) .. " | retry #" .. attempt)
+        jumpAndWait()
+
+        -- Walk manual lagi ke arah printer
+        hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return false end
+        local hum2 = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum2 then
+            hum2:MoveTo(targetPos)
+            local t = tick()
+            repeat
+                task.wait(0.1)
+                hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            until not hrp
+                or (hrp and (hrp.Position - targetPos).Magnitude <= 4)
+                or (tick() - t >= 8)
+        end
+
+        if hrp and (hrp.Position - targetPos).Magnitude <= 4 then
+            print("[Office] Sampai setelah retry walk! dist: " .. math.floor((hrp.Position - targetPos).Magnitude))
+            return true
+        end
+    end
+
+    warn("[Office] Gagal sampai printer setelah 8 attempt!")
+    return false
 end
 
 -- =================================================================
@@ -141,7 +184,6 @@ local function startOffice()
 
         print("[Office] Jalan ke kursi...")
         local duduk = false
-
         for attempt = 1, 8 do
             if not officeRunning then break end
             walkNoclip(closestSeat, 5)
@@ -149,13 +191,11 @@ local function startOffice()
             duduk = tryDuduk()
             if duduk then break end
 
-            -- Belum duduk, coba mundur ke arah yang berbeda tiap attempt
             hrp = char:FindFirstChild("HumanoidRootPart")
             if not hrp then break end
-
             local offset = RetryOffsets[((attempt - 1) % #RetryOffsets) + 1]
             local backPos = hrp.Position + offset
-            print("[Office] Belum duduk, geser ke offset " .. tostring(offset) .. " attempt #" .. attempt)
+            print("[Office] Belum duduk, geser ke " .. tostring(offset) .. " attempt #" .. attempt)
             hum:MoveTo(backPos)
             task.wait(1.5)
         end
@@ -237,18 +277,9 @@ local function startOffice()
         jumpAndWait()
 
         print("[Office] Jalan ke " .. printerAssigned .. "...")
-        local hrp2, dist
-        for attempt = 1, 4 do
-            walkNoclip(targetPos, 5)
-            hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp2 then break end
-            dist = (hrp2.Position - targetPos).Magnitude
-            if dist <= 4 then break end
-            warn("[Office] Nyangkut! Jarak: " .. math.floor(dist) .. ". Retry " .. attempt .. "/4")
-            jumpAndWait()
-        end
+        local berhasil = walkKePrinter(targetPos)
 
-        if not hrp2 or dist > 4 then
+        if not berhasil then
             warn("[Office] Gagal sampai ke printer, retry dari awal...")
             task.wait(2)
             continue
@@ -258,6 +289,7 @@ local function startOffice()
         local prompt = Workspace.Computers[printerAssigned].Part.ProximityPrompt
         print("[Office] Hold printer...")
 
+        local hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local cam = Workspace.CurrentCamera
         if cam and hrp2 then
             cam.CameraType = Enum.CameraType.Scriptable
