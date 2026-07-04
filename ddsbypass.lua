@@ -2,9 +2,6 @@ local getinfo = getinfo or debug.getinfo
 local DEBUG = false
 local Hooked = {}
 
--- DISABLE SEMUA PRINT & WARN BIAR GAK LAG PAS AFK LAMA
-local print = function() end
-local warn = function() end
 
 local Detected, Kill
 
