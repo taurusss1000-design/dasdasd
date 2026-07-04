@@ -137,7 +137,7 @@ local function persistentWalkToPrinter(targetPos)
         end
 
         local dist = (hrp.Position - targetPos).Magnitude
-        if dist <= 1 then
+        if dist <= 2.5 then
             arrived = true
             print("[Office] Printer tercapai! dist: " .. string.format("%.2f", dist))
             break
@@ -445,4 +445,4 @@ local function startOffice()
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai! v6")
+print("[Office] Auto Office Loop dimulai! v7")
