@@ -2,6 +2,10 @@ local getinfo = getinfo or debug.getinfo
 local DEBUG = false
 local Hooked = {}
 
+-- DISABLE SEMUA PRINT & WARN BIAR GAK LAG PAS AFK LAMA
+local print = function() end
+local warn = function() end
+
 local Detected, Kill
 
 setthreadidentity(2)
@@ -125,6 +129,7 @@ WindUI:SetTheme("MachTheme")
 
 Window:Tag({ Title = "PREMIUM", Color = Mains })
 Window:Tag({ Title = "BETA", Color = Purple })
+Window:Tag({ Title = "V1.1", Color = Purple })
 
 local TweenService = game:GetService("TweenService")
 local protectGui
@@ -855,7 +860,7 @@ local PackageData = {
         Walk      = Vector3.new(-8776.65, 3.15, 645.71),
         WalkLook  = Vector3.new(0.8627, 0, -0.5057),
         AfterLook = Vector3.new(-0.8474, 0, 0.5310),
-        Camera    = CFrame.new(Vector3.new(-8785.28, 11.15, 650.77), Vector3.new(-8775.79, 3.15, 645.20)),
+        Camera    = CFrame.new(Vector3.new(-8786.53, 8.41, 652.19), Vector3.new(-8785.83, 8.01, 651.61)),
     },
     ["4"] = {
         Tween     = CFrame.new(Vector3.new(714.63, 3.24, -3980.11), Vector3.new(714.63, 3.24, -3980.11) + Vector3.new(0.0438, 0, 0.9990)),
@@ -1189,12 +1194,16 @@ local function startCourierLoop()
         end
         task.wait(0.3)
 
-        -- 5. Rotate player ke arah paket, set kamera, wait 1 detik
-        print("[Courier] Rotate player + kamera, wait 1 detik...")
+        -- 5. Rotate player ke arah paket, set kamera sesuai data.Camera, wait 1 detik
+        print("[Courier] Rotate player + set kamera khusus paket, wait 1 detik...")
         faceDirection(data.WalkLook)
         task.wait(0.5)
         
-        setCameraBehindPlayer()
+        local cam = Workspace.CurrentCamera
+        if cam and data.Camera then
+            cam.CameraType = Enum.CameraType.Scriptable
+            cam.CFrame = data.Camera
+        end
         
         task.wait(1)
 
@@ -1220,6 +1229,9 @@ local function startCourierLoop()
             end)
             task.wait(1)
         end
+        
+        -- Kembalikan kamera ke normal
+        if cam then cam.CameraType = Enum.CameraType.Custom end
 
         -- 6. Look ke arah AfterLook
         print("[Courier] Memutar arah sebelum spawn kendaraan...")
@@ -2100,6 +2112,14 @@ local CourierTab = AutoJobTabSection:Tab({
     Border = true,
 })
 
+local OfficeTab = AutoJobTabSection:Tab({
+    Title = "Office Worker",
+    Icon = "briefcase",
+    IconColor = Color3.fromHex("#4CAF50"), -- Green
+    IconShape = "Square",
+    Border = true,
+})
+
 -- =============================================
 -- BARISTA (Inside BaristaTab)
 -- =============================================
@@ -2432,6 +2452,56 @@ task.spawn(function()
     isWhCourierLoading = false
 end)
 
+-- =============================================
+-- OFFICE WORKER (Inside OfficeTab)
+-- =============================================
+local OfficeModule = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice.lua"
+))()
+
+local OfficeSection = OfficeTab:Section({ Title = "Auto Job Office", Box = true, TextXAlignment = "Center" })
+
+local officeToggle = OfficeSection:Toggle({
+    Title = "Auto Office Worker",
+    Value = false,
+    Callback = function(v)
+        if v then
+            -- 1. Ambil Job Office Worker
+            pcall(function()
+                game:GetService("ReplicatedStorage"):WaitForChild("JobEvents"):WaitForChild("TeamChangeRequest")
+                    :FireServer("Office Worker", 11378976, 0, 0, "Detector")
+            end)
+            task.wait(1.5)
+
+            -- 2. Spawn Kendaraan
+            local SELECTED_CAR = SpawnCar.SelectedCar or "Yamahax-MioSporty"
+            pcall(function() ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR, 1) end)
+            task.wait(2)
+
+            -- 3. Tween ke lokasi Office
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local targetCF = CFrame.new(-5916.20, 4.63, -224.57)
+                local tweenInfo = TweenInfo.new(100, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCF})
+                tween:Play()
+                tween.Completed:Wait()
+                task.wait(1.5)
+                
+                -- Keluar dari kendaraan
+                jumpAndWait()
+                task.wait(1)
+            end
+
+            -- 4. Start Module
+            OfficeModule:Start()
+        else
+            OfficeModule:Stop()
+        end
+    end
+})
+
 task.spawn(function()
     task.wait(0.5)
     if jobConfig.TimeoutEnabled then
@@ -2670,7 +2740,7 @@ local AutoRejoin = (function()
     -- URL script yang akan di-execute otomatis setelah rejoin
     -- WARNING: Ganti SCRIPT_URL dengan URL script UTAMA (misal pastebin/github raw cobadds.lua lo)
     -- JANGAN pakai URL vyperui.lua karena itu cuma UI-nya saja!
-    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/ddsbypass.lua" 
+    local SCRIPT_URL = "https://raw.githubusercontent.com/AwoakwoakSikat/emangbowleh/refs/heads/main/loader-news.lua" 
     local EXEC_DELAY = 30 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
 
     -- Cari queue_on_teleport dari berbagai executor secara aman
