@@ -152,7 +152,7 @@ buttonFrame.Position = UDim2.new(0, 20, 0, 20)
 buttonFrame.BackgroundTransparency = 1
 buttonFrame.Parent = screenGui
 
-local imageButton = Instance.new("ImageButton")
+imageButton = Instance.new("ImageButton")
 imageButton.Size = UDim2.new(1, 0, 1, 0)
 imageButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 imageButton.BackgroundTransparency = 0.2
@@ -344,7 +344,7 @@ local ServerInfo = InfoTab:Paragraph({
 
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -1462,7 +1462,7 @@ end
 -- =============================================
 
 
-local RaceTab = Window:Tab({
+RaceTab = Window:Tab({
     Title = "Race",
     Icon = "motorbike",
 	IconColor = Mains,
@@ -1470,9 +1470,9 @@ local RaceTab = Window:Tab({
 	Border = true,
 })
 
-local SpeedSection = RaceTab:Section({ Title = "Speed Hack", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+SpeedSection = RaceTab:Section({ Title = "Speed Hack", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
-local speedValueInput = SpeedSection:Input({
+speedValueInput = SpeedSection:Input({
     Type = "Input", 
     Title = "Speed Value",
     Value = uiConfig.SpeedValue or "100",
@@ -1490,7 +1490,7 @@ local speedValueInput = SpeedSection:Input({
 })
 VehicleSpeed.SetSpeed(tonumber(uiConfig.SpeedValue) or 100)
 
-local speedHackToggle = SpeedSection:Toggle({
+speedHackToggle = SpeedSection:Toggle({
     Title = "Enable Speed Hack",
     Value = false,
     Callback = function(on)
@@ -1502,9 +1502,9 @@ local speedHackToggle = SpeedSection:Toggle({
     end
 })
 
-local SlowSection = RaceTab:Section({ Title = "Slow Race (Gradual)", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+SlowSection = RaceTab:Section({ Title = "Slow Race (Gradual)", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
-local slowMaxSpeedInput = SlowSection:Input({
+slowMaxSpeedInput = SlowSection:Input({
     Type = "Input", 
     Title = "Max Speed",
     Value = uiConfig.SlowMaxSpeed or "200",
@@ -1522,7 +1522,7 @@ local slowMaxSpeedInput = SlowSection:Input({
 })
 SlowRace.MaxSpeed = tonumber(uiConfig.SlowMaxSpeed) or 200
 
-local slowAccelInput = SlowSection:Input({
+slowAccelInput = SlowSection:Input({
     Type = "Input", 
     Title = "Acceleration (kelipatan)",
     Value = uiConfig.SlowAccel or "3",
@@ -1540,7 +1540,7 @@ local slowAccelInput = SlowSection:Input({
 })
 SlowRace.AccelMultiplier = tonumber(uiConfig.SlowAccel) or 3
 
-local slowRaceToggle = SlowSection:Toggle({
+slowRaceToggle = SlowSection:Toggle({
     Title = "Enable Slow Race",
     Value = false,
     Callback = function(on)
@@ -1552,7 +1552,7 @@ local slowRaceToggle = SlowSection:Toggle({
     end
 })
 
-local CinematicSection = RaceTab:Section({ Title = "Cinematic", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+CinematicSection = RaceTab:Section({ Title = "Cinematic", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
 CinematicSection:Toggle({
     Title = "Enable Cinematic",
@@ -1569,7 +1569,7 @@ CinematicSection:Toggle({
 local LightingService = game:GetService("Lighting")
 local originalLighting = {}
 
-local ultraGrafikToggle = CinematicSection:Toggle({
+ultraGrafikToggle = CinematicSection:Toggle({
     Title = "Grafik Mode Ultra",
     Value = false,
     Callback = function(on)
@@ -1680,7 +1680,7 @@ local ultraGrafikToggle = CinematicSection:Toggle({
 
 local initialCarList = getCarList()
 
-local GarageTab = Window:Tab({
+GarageTab = Window:Tab({
     Title = "Garasi",
     Icon = "warehouse",
 	IconColor = Mains,
@@ -1688,9 +1688,9 @@ local GarageTab = Window:Tab({
 	Border = true,
 })
 
-local GarageSection = GarageTab:Section({ Title = "Spawn Kendaraan", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
+GarageSection = GarageTab:Section({ Title = "Spawn Kendaraan", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
 
-local carDropdown = GarageSection:Dropdown({
+carDropdown = GarageSection:Dropdown({
     Title = "Pilih Kendaraan",
     Multi = false,
     Options = initialCarList,
@@ -1731,7 +1731,7 @@ GarageSection:Button({
     Callback = function() rideMotor() end
 })
 
-local autoRideToggle = GarageSection:Toggle({
+autoRideToggle = GarageSection:Toggle({
     Title = "Auto Ride after Spawn",
     Value = false,
     Callback = function(on)
@@ -1743,7 +1743,7 @@ local autoRideToggle = GarageSection:Toggle({
     end
 })
 
-local autoRideAlwaysToggle = GarageSection:Toggle({
+autoRideAlwaysToggle = GarageSection:Toggle({
     Title = "Auto Ride Always",
     Value = false,
     Callback = function(on)
@@ -1817,7 +1817,7 @@ end
 -- GUI - TAB INJECTION
 -- =============================================
 
-local InjectionTab = Window:Tab({
+InjectionTab = Window:Tab({
     Title = "Injection",
     Icon = "syringe",
     IconColor = Mains,
@@ -1825,14 +1825,14 @@ local InjectionTab = Window:Tab({
     Border = true,
 })
 
-local PresetSection = InjectionTab:Section({ Title = "Preset Injection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+PresetSection = InjectionTab:Section({ Title = "Preset Injection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
 PresetSection:Button({ Title = "MODE SUNMORI", Callback = function() InjectMesin(1.5, 2000, 0.9, 0.9, "Mode Sunmori Aktif") end })
 PresetSection:Button({ Title = "MODE BALAP LIAR", Callback = function() InjectMesin(3.5, 5000, 0.75, 0.75, "Mode Balap Aktif") end })
 PresetSection:Button({ Title = "MODE DEWA", Callback = function() InjectMesin(8, 15000, 0.45, 0.45, "Mode Dewa Aktif") end })
 PresetSection:Button({ Title = "RESET STANDAR PABRIK", Callback = function() WindUI:Notify({ Title = "â„¹ï¸ Info", Content = "Respawn kendaraan dari menu game untuk reset.", Duration = 5 }) end })
 
-local CustomSection = InjectionTab:Section({ Title = "Custom Injection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+CustomSection = InjectionTab:Section({ Title = "Custom Injection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
 local customHP, customRPM, customRatio, customFD = 2, 5000, 0.8, 0.8
 
@@ -2039,7 +2039,7 @@ end
 -- AUTO JOB Office Loader
 -- =============================================
 local OfficeModule = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice.lua"
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua"
 ))()
 
 
@@ -2098,12 +2098,12 @@ if bCfg.KickLimitEnabled ~= nil then BaristaModule.kickLimitEnabled = bCfg.KickL
 -- UI — JOB SECTION 
 -- =============================================
 
-local AutoJobTabSection = Window:Section({
+AutoJobTabSection = Window:Section({
     Title = "Auto Job",
     Opened = true,
 })
 
-local BaristaTab = AutoJobTabSection:Tab({
+BaristaTab = AutoJobTabSection:Tab({
     Title = "Barista & Monitoring",
     Icon = "coffee",
     IconColor = Purple,
@@ -2111,7 +2111,7 @@ local BaristaTab = AutoJobTabSection:Tab({
     Border = true,
 })
 
-local CourierTab = AutoJobTabSection:Tab({
+CourierTab = AutoJobTabSection:Tab({
     Title = "Courier",
     Icon = "package",
     IconColor = Color3.fromHex("#ECA201"), -- Yellow
@@ -2119,7 +2119,7 @@ local CourierTab = AutoJobTabSection:Tab({
     Border = true,
 })
 
-local OfficeTab = AutoJobTabSection:Tab({
+OfficeTab = AutoJobTabSection:Tab({
     Title = "Office",
     Icon = "office",
     IconColor = Color3.fromHex("#ECA201"), -- Yellow
@@ -2141,7 +2141,7 @@ local JobSectionOffice = OfficeTab:Section({
 })
 
 -- Toggle Auto Office
-local OfficeToggle = JobSectionOffice:Toggle({
+OfficeToggle = JobSectionOffice:Toggle({
     Title = "Auto Office",
     Value = false,
     Callback = function(on)
@@ -2163,7 +2163,7 @@ local OfficeToggle = JobSectionOffice:Toggle({
 -- BARISTA (Inside BaristaTab)
 -- =============================================
 
-local JobSection = BaristaTab:Section({
+JobSection = BaristaTab:Section({
     Title          = "Auto Job Barista",
     Box            = true,
     TextXAlignment = "Center",
@@ -2172,7 +2172,7 @@ local JobSection = BaristaTab:Section({
 })
 
 -- Toggle Auto Barista
-local baristaToggle = JobSection:Toggle({
+baristaToggle = JobSection:Toggle({
     Title = "Auto Barista",
     Value = false,
     Callback = function(on)
@@ -2210,7 +2210,7 @@ JobSection:Input({
     end
 })
 
-local restartToggle = JobSection:Toggle({
+restartToggle = JobSection:Toggle({
     Title = "Auto Restart",
     Value = false,
     Callback = function(on)
@@ -2245,7 +2245,7 @@ JobSection:Input({
     end
 })
 
-local kickToggle = JobSection:Toggle({
+kickToggle = JobSection:Toggle({
     Title = "Toggle Auto Kick",
     Value = false,
     Callback = function(on)
@@ -2261,9 +2261,9 @@ local kickToggle = JobSection:Toggle({
 -- WEBHOOK SECTION (merged into BaristaTab)
 -- =============================================
 
-local WebhookSection = BaristaTab:Section({ Title = "Discord Webhook", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
+WebhookSection = BaristaTab:Section({ Title = "Discord Webhook", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
 
-local whUrlInput = WebhookSection:Input({
+whUrlInput = WebhookSection:Input({
     Type = "Input",
     Title = "Webhook URL",
     Value = whConfig.URL or "",
@@ -2278,7 +2278,7 @@ local whUrlInput = WebhookSection:Input({
     end
 })
 
-local whDelayInput = WebhookSection:Input({
+whDelayInput = WebhookSection:Input({
     Type = "Input",
     Title = "Delay Kirim (detik)",
     Value = tostring(whConfig.Delay or 10),
@@ -2318,7 +2318,7 @@ WebhookSection:Button({
     end
 })
 
-local whToggle = WebhookSection:Toggle({
+whToggle = WebhookSection:Toggle({
     Title = "Aktifkan Webhook",
     Value = false,
     Callback = function(v)
@@ -2347,7 +2347,7 @@ local whToggle = WebhookSection:Toggle({
 -- COURIER (Inside CourierTab)
 -- =============================================
 
-local CourierSection = CourierTab:Section({ Title = "Auto Job Courier", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
+CourierSection = CourierTab:Section({ Title = "Auto Job Courier", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
 
 CourierSection:Button({
     Title = "Accept Job Courier",
@@ -2356,7 +2356,7 @@ CourierSection:Button({
     end
 })
 
-local courierToggle = CourierSection:Toggle({
+courierToggle = CourierSection:Toggle({
     Title = "Auto Work Courier",
     Value = false,
     Callback = function(on)
@@ -2398,9 +2398,9 @@ CourierSection:Button({
     Callback = function() stopCourierLoop() end
 })
 
-local CourierWebhookSection = CourierTab:Section({ Title = "Discord Webhook Courier", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
+CourierWebhookSection = CourierTab:Section({ Title = "Discord Webhook Courier", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = true })
 
-local whCourierUrlInput = CourierWebhookSection:Input({
+whCourierUrlInput = CourierWebhookSection:Input({
     Type = "Input",
     Title = "Webhook URL",
     Value = whCourierConfig.URL or "",
@@ -2458,7 +2458,7 @@ CourierWebhookSection:Button({
     end
 })
 
-local whCourierToggle = CourierWebhookSection:Toggle({
+whCourierToggle = CourierWebhookSection:Toggle({
     Title = "Aktifkan Webhook Courier",
     Value = false,
     Callback = function(v)
@@ -3160,7 +3160,7 @@ end)()
 -- GUI - TAB SETTINGS
 -- =============================================
 
-local FreecamTab = Window:Tab({
+FreecamTab = Window:Tab({
     Title = "Settings",
     Icon = "settings",
 	IconColor = Mains,
@@ -3168,9 +3168,9 @@ local FreecamTab = Window:Tab({
 	Border = true,
 })
 
-local HideStatsSection = FreecamTab:Section({ Title = "Hide Stats", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+HideStatsSection = FreecamTab:Section({ Title = "Hide Stats", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
-local hideStatsToggle = HideStatsSection:Toggle({
+hideStatsToggle = HideStatsSection:Toggle({
     Title = "Enable Hide Stats",
     Value = false,
     Callback = function(on)
@@ -3182,7 +3182,7 @@ local hideStatsToggle = HideStatsSection:Toggle({
     end
 })
 
-local fakeNameInput = HideStatsSection:Input({
+fakeNameInput = HideStatsSection:Input({
     Type = "Input", 
     Title = "Fake Name",
     Value = uiConfig.FakeName or "King Vypers",
@@ -3197,7 +3197,7 @@ local fakeNameInput = HideStatsSection:Input({
 })
 HideStats.SetFakeName(uiConfig.FakeName or "King Vypers")
 
-local fakeRankInput = HideStatsSection:Input({
+fakeRankInput = HideStatsSection:Input({
     Type = "Input", 
     Title = "Fake Rank",
     Value = uiConfig.FakeRank or "King Vypers 👑",
@@ -3216,9 +3216,9 @@ HideStats.SetFakeRank(uiConfig.FakeRank or "King Vypers 👑")
 -- GUI - PERFORMANCE SECTION (di Settings tab)
 -- =============================================
 
-local PerformanceSection = FreecamTab:Section({ Title = "Performance", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+PerformanceSection = FreecamTab:Section({ Title = "Performance", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
-local potatoToggle = PerformanceSection:Toggle({
+potatoToggle = PerformanceSection:Toggle({
     Title = "FPS Booster (Potato Mode)",
     Value = false,
     Callback = function(on)
@@ -3230,7 +3230,7 @@ local potatoToggle = PerformanceSection:Toggle({
     end
 })
 
-local disableRenderToggle = PerformanceSection:Toggle({
+disableRenderToggle = PerformanceSection:Toggle({
     Title = "Disable 3D Rendering",
     Value = false,
     Callback = function(on)
@@ -3244,7 +3244,7 @@ local disableRenderToggle = PerformanceSection:Toggle({
 
 local selectedFpsCap = 60
 
-local fpscapDropdown = PerformanceSection:Dropdown({
+fpscapDropdown = PerformanceSection:Dropdown({
     Title = "FPS Cap",
     Options = {"60", "90", "120", "240"},
     Value = uiConfig.FpsCap or "60",
@@ -3259,7 +3259,7 @@ local fpscapDropdown = PerformanceSection:Dropdown({
 })
 selectedFpsCap = tonumber(uiConfig.FpsCap) or 60
 
-local fpsUnlockToggle = PerformanceSection:Toggle({
+fpsUnlockToggle = PerformanceSection:Toggle({
     Title = "Enable FPS Unlock",
     Value = false,
     Callback = function(on)
@@ -3280,9 +3280,9 @@ local fpsUnlockToggle = PerformanceSection:Toggle({
 -- GUI - PROTECTION SECTION (di Settings tab)
 -- =============================================
 
-local ProtectionSection = FreecamTab:Section({ Title = "Protection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+ProtectionSection = FreecamTab:Section({ Title = "Protection", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
-local antiAfkToggle = ProtectionSection:Toggle({
+antiAfkToggle = ProtectionSection:Toggle({
     Title = "Anti-AFK",
     Value = false,
     Callback = function(on)
@@ -3294,7 +3294,7 @@ local antiAfkToggle = ProtectionSection:Toggle({
     end
 })
 
-local antiStaffToggle = ProtectionSection:Toggle({
+antiStaffToggle = ProtectionSection:Toggle({
     Title = "Anti Staff (Auto Kick)",
     Value = false,
     Callback = function(on)
@@ -3328,10 +3328,10 @@ end
 local settingsConfig = loadSettingsConfig()
 local isSettingsLoading = true
 
-local ReconnectSection = FreecamTab:Section({ Title = "Auto Reconnect & Execute", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
+ReconnectSection = FreecamTab:Section({ Title = "Auto Reconnect & Execute", Box = true, TextXAlignment = "Center", TextSize = 15, Opened = false })
 
 -- Toggle combined: Auto Reconnect
-local reconnectToggle = ReconnectSection:Toggle({
+reconnectToggle = ReconnectSection:Toggle({
     Title = "Enable Auto Reconnect",
     Value = false,
     Callback = function(on)
@@ -3349,7 +3349,7 @@ local reconnectToggle = ReconnectSection:Toggle({
 
 -- Toggle: Auto Execute setelah rejoin
 -- Kalau ON, script King Vypers akan otomatis ke-load lagi setelah rejoin
-local autoExecToggle = ReconnectSection:Toggle({
+autoExecToggle = ReconnectSection:Toggle({
     Title = "Auto Execute Setelah Rejoin",
     Value = false,
     Callback = function(on)
