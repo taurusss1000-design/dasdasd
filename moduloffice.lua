@@ -279,27 +279,68 @@ local function startOffice()
             return nil
         end
 
-        -- Aggressive sit: jalan ke kursi sambil terus coba Sit() setiap 0.1 detik
-        local function aggressiveSit(seatObj, targetPos)
-            local noclipConn = enableNoclip(char)
-            local timeout = tick() + 15
+        -- Arah menjauh untuk retry duduk: kanan, kiri, depan, belakang
+        local AwayDirs = {
+            Vector3.new(10, 0, 0),
+            Vector3.new(-10, 0, 0),
+            Vector3.new(0, 0, 10),
+            Vector3.new(0, 0, -10),
+        }
 
-            while not hum.Sit and tick() < timeout do
+        -- Walk ke titik target pakai noclip, tunggu sampai radius stud
+        local function walkToPos(targetPos, radius)
+            radius = radius or 1
+            local conn = enableNoclip(char)
+            local t = tick()
+            while tick() - t < 15 do
                 hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then break end
-
-                local dist = (hrp.Position - targetPos).Magnitude
+                hum = char:FindFirstChildOfClass("Humanoid")
+                if not hrp or not hum then break end
+                if (hrp.Position - targetPos).Magnitude <= radius then break end
                 hum:MoveTo(targetPos)
+                task.wait(0.15)
+            end
+            disableNoclip(char, conn)
+            task.wait(0.2)
+        end
 
-                if dist <= 4 then
+        -- Coba duduk. Kalau gagal (berdiri di atas kursi),
+        -- walk menjauh 10 studs lalu balik lagi. Urutan: kanan -> kiri -> depan -> belakang
+        local function trySitWithRetry(seatObj, seatPos)
+            local dirIndex = 1
+
+            for attempt = 1, 8 do
+                if not officeRunning then break end
+
+                print("[Office] Walk ke kursi attempt #" .. attempt .. "...")
+                walkToPos(seatPos, 1)
+
+                hrp = char:FindFirstChild("HumanoidRootPart")
+                hum = char:FindFirstChildOfClass("Humanoid")
+                if not hrp or not hum then break end
+
+                -- Coba Sit() kalau sudah 1.5 stud
+                if (hrp.Position - seatPos).Magnitude <= 1.5 then
                     pcall(function() seatObj:Sit(hum) end)
+                    task.wait(0.3)
                 end
 
-                task.wait(0.1)
+                if hum.Sit then
+                    print("[Office] Duduk berhasil! attempt #" .. attempt)
+                    return true
+                end
+
+                -- Masih berdiri di atas kursi -> walk menjauh 10 studs
+                local awayDir = AwayDirs[dirIndex]
+                dirIndex = (dirIndex % #AwayDirs) + 1
+                hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then break end
+                warn("[Office] Gagal duduk, menjauh " .. tostring(awayDir) .. " attempt #" .. attempt)
+                walkToPos(hrp.Position + awayDir, 1)
+                task.wait(0.3)
             end
 
-            disableNoclip(char, noclipConn)
-            return hum.Sit
+            return false
         end
 
         print("[Office] Jalan ke kursi...")
@@ -307,32 +348,10 @@ local function startOffice()
         local duduk = false
 
         if seatObj then
-            print("[Office] Kursi ditemukan, aggressive sit mode...")
-            duduk = aggressiveSit(seatObj, closestSeat)
-        end
-
-        if not duduk then
-            warn("[Office] Aggressive sit gagal, fallback walk manual...")
-            for attempt = 1, 5 do
-                if not officeRunning then break end
-                walkNoclip(closestSeat, 3)
-                task.wait(0.2)
-                seatObj = findSeatObject()
-                if seatObj then
-                    pcall(function() seatObj:Sit(hum) end)
-                    task.wait(0.4)
-                end
-                if hum.Sit then
-                    duduk = true
-                    print("[Office] Duduk berhasil di fallback attempt #" .. attempt)
-                    break
-                end
-                hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then break end
-                local offset = RetryOffsets[((attempt - 1) % #RetryOffsets) + 1]
-                hum:MoveTo(hrp.Position + offset)
-                task.wait(1)
-            end
+            print("[Office] Kursi ditemukan, trySitWithRetry...")
+            duduk = trySitWithRetry(seatObj, closestSeat)
+        else
+            warn("[Office] Seat object tidak ditemukan!")
         end
 
         if not duduk then
@@ -426,4 +445,4 @@ local function startOffice()
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai! v5")
+print("[Office] Auto Office Loop dimulai! v6")
