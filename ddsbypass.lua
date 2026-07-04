@@ -2,6 +2,10 @@ local getinfo = getinfo or debug.getinfo
 local DEBUG = false
 local Hooked = {}
 
+-- DISABLE SEMUA PRINT & WARN BIAR GAK LAG PAS AFK LAMA
+local print = function() end
+local warn = function() end
+
 local Detected, Kill
 
 setthreadidentity(2)
@@ -2084,6 +2088,15 @@ if bCfg.KickLimitMinutes then BaristaModule.kickLimitMinutes = bCfg.KickLimitMin
 if bCfg.KickLimitEnabled ~= nil then BaristaModule.kickLimitEnabled = bCfg.KickLimitEnabled end
 
 -- =============================================
+-- AUTO JOB OFFICE LOADER
+-- =============================================
+
+-- Load module dari GitHub
+local OfficeModule = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice3.lua"
+))()
+
+-- =============================================
 -- UI — JOB SECTION 
 -- =============================================
 
@@ -2104,6 +2117,14 @@ local CourierTab = AutoJobTabSection:Tab({
     Title = "Courier",
     Icon = "package",
     IconColor = Color3.fromHex("#ECA201"), -- Yellow
+    IconShape = "Square",
+    Border = true,
+})
+
+local OfficeTab = AutoJobTabSection:Tab({
+    Title = "Office Worker",
+    Icon = "briefcase",
+    IconColor = Color3.fromHex("#4CAF50"), -- Green
     IconShape = "Square",
     Border = true,
 })
@@ -2440,6 +2461,29 @@ task.spawn(function()
     isWhCourierLoading = false
 end)
 
+-- =============================================
+-- OFFICE WORKER UI (Inside OfficeTab)
+-- =============================================
+
+local OfficeSection = OfficeTab:Section({ Title = "Auto Job Office", Box = true, TextXAlignment = "Center" })
+
+local officeToggle = OfficeSection:Toggle({
+    Title = "Auto Office Worker",
+    Value = false,
+    Callback = function(v)
+        if not isJobLoading then
+            jobConfig.AutoOffice = v
+            saveJobConfig(jobConfig)
+        end
+
+        if v then
+            OfficeModule:Start()
+        else
+            OfficeModule:Stop()
+        end
+    end
+})
+
 task.spawn(function()
     task.wait(0.5)
     if jobConfig.TimeoutEnabled then
@@ -2453,6 +2497,9 @@ task.spawn(function()
     end
     if jobConfig.KickLimitEnabled then
         kickToggle:Set(true)
+    end
+    if jobConfig.AutoOffice then
+        officeToggle:Set(true)
     end
     if whConfig.Active then
         whToggle:Set(true)
