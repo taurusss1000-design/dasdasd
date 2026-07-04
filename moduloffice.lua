@@ -134,6 +134,23 @@ local function persistentWalkToPrinter(targetPos, arrivedRadius)
         hum = char:FindFirstChildOfClass("Humanoid")
         if not hrp or not hum then break end
 
+        -- Kalau nyangkut duduk di kursi lain, langsung paksa berdiri + jump
+        if hum.Sit then
+            warn("[Office] Kena duduk kursi lain! Force stand up...")
+            hum.Sit = false
+            task.wait(0.1)
+            -- Kalau masih duduk, jump paksa
+            if hum.Sit then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                task.wait(0.3)
+            end
+            -- Angkat posisi karakter sedikit biar lepas dari seat
+            if hrp then
+                hrp.CFrame = hrp.CFrame * CFrame.new(0, 3, 0)
+            end
+            task.wait(0.3)
+        end
+
         local dist = (hrp.Position - targetPos).Magnitude
         if dist <= arrivedRadius then
             arrived = true
@@ -328,4 +345,4 @@ local function startOffice()
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai! v1")
+print("[Office] Auto Office Loop dimulai!")
