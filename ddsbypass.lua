@@ -3,8 +3,8 @@ local DEBUG = false
 local Hooked = {}
 
 -- DISABLE SEMUA PRINT & WARN BIAR GAK LAG PAS AFK LAMA
-local print = function() end
-local warn = function() end
+-- local print = function() end
+-- local warn = function() end
 
 local Detected, Kill
 
@@ -2455,9 +2455,21 @@ end)
 -- =============================================
 -- OFFICE WORKER (Inside OfficeTab)
 -- =============================================
-local OfficeModule = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice.lua"
-))()
+local OfficeModule
+do
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet(
+            "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice.lua"
+        ))()
+    end)
+    if ok and result then
+        OfficeModule = result
+    else
+        warn("[Office] Gagal load moduloffice.lua dari Github! Error: " .. tostring(result))
+        warn("[Office] Pastikan file sudah di-upload ke Github repo!")
+        OfficeModule = { Start = function() end, Stop = function() end, Running = false }
+    end
+end
 
 local OfficeSection = OfficeTab:Section({ Title = "Auto Job Office", Box = true, TextXAlignment = "Center" })
 
