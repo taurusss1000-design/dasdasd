@@ -107,45 +107,53 @@ local function jumpAndWait()
     task.wait(0.3)
 end
 
-local function walkKePrinter(targetPos)
-    local hrp, dist
-    for attempt = 1, 8 do
-        walkNoclip(targetPos, 5)
-        hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return false end
-        dist = (hrp.Position - targetPos).Magnitude
+-- =================================================================
+-- PERSISTENT WALK KE PRINTER
+-- Terus paksa MoveTo + noclip sampai beneran nyampe
+-- Tidak bisa dihentikan oleh gerakan player
+-- =================================================================
+local function persistentWalkToPrinter(targetPos, arrivedRadius)
+    arrivedRadius = arrivedRadius or 3.5
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return false end
 
-        if dist <= 4 then
-            print("[Office] Sampai di printer! dist: " .. math.floor(dist))
-            return true
+    print("[Office] Persistent walk ke printer dimulai...")
+
+    -- Noclip aktif selama perjalanan
+    local noclipConn = enableNoclip(char)
+
+    -- Loop paksa MoveTo terus setiap 0.2 detik
+    -- Tidak peduli player gerak, script tetap paksa balik ke printer
+    local arrived = false
+    local timeout = tick() + 60  -- max 60 detik
+
+    while not arrived and tick() < timeout do
+        hrp = char:FindFirstChild("HumanoidRootPart")
+        hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then break end
+
+        local dist = (hrp.Position - targetPos).Magnitude
+        if dist <= arrivedRadius then
+            arrived = true
+            print("[Office] Printer tercapai! dist: " .. string.format("%.1f", dist))
+            break
         end
 
-        warn("[Office] Belum sampai printer! dist: " .. math.floor(dist) .. " | retry #" .. attempt)
-        jumpAndWait()
-
-        -- Walk manual lagi ke arah printer
-        hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return false end
-        local hum2 = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum2 then
-            hum2:MoveTo(targetPos)
-            local t = tick()
-            repeat
-                task.wait(0.1)
-                hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            until not hrp
-                or (hrp and (hrp.Position - targetPos).Magnitude <= 4)
-                or (tick() - t >= 8)
-        end
-
-        if hrp and (hrp.Position - targetPos).Magnitude <= 4 then
-            print("[Office] Sampai setelah retry walk! dist: " .. math.floor((hrp.Position - targetPos).Magnitude))
-            return true
-        end
+        -- Paksa MoveTo setiap tick — ini yang bikin ga bisa distop player
+        hum:MoveTo(targetPos)
+        task.wait(0.2)
     end
 
-    warn("[Office] Gagal sampai printer setelah 8 attempt!")
-    return false
+    -- Matikan noclip setelah sampai
+    disableNoclip(char, noclipConn)
+
+    if not arrived then
+        warn("[Office] Timeout! Gagal sampai ke printer dalam 60 detik.")
+    end
+
+    return arrived
 end
 
 -- =================================================================
@@ -276,8 +284,17 @@ local function startOffice()
         print("[Office] Jump keluar kursi...")
         jumpAndWait()
 
-        print("[Office] Jalan ke " .. printerAssigned .. "...")
-        local berhasil = walkKePrinter(targetPos)
+        -- Pastikan karakter bener-bener udah turun dari kursi
+        local hum2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum2 and hum2.Sit then
+            hum2.Sit = false
+            task.wait(0.5)
+        end
+
+        print("[Office] Persistent walk ke " .. printerAssigned .. "...")
+
+        -- Ini yang fix: persistent loop, ga bisa dihentikan oleh player
+        local berhasil = persistentWalkToPrinter(targetPos, 3.5)
 
         if not berhasil then
             warn("[Office] Gagal sampai ke printer, retry dari awal...")
@@ -286,9 +303,8 @@ local function startOffice()
         end
 
         task.wait(0.3)
-        local prompt = Workspace.Computers[printerAssigned].Part.ProximityPrompt
-        print("[Office] Hold printer...")
 
+        -- Setup kamera agar prompt terjangkau
         local hrp2 = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local cam = Workspace.CurrentCamera
         if cam and hrp2 then
@@ -299,6 +315,8 @@ local function startOffice()
         end
         task.wait(0.5)
 
+        local prompt = Workspace.Computers[printerAssigned].Part.ProximityPrompt
+        print("[Office] Hold printer...")
         prompt:InputHoldBegin()
         task.wait(1.5)
         prompt:InputHoldEnd()
@@ -310,4 +328,4 @@ local function startOffice()
 end
 
 task.spawn(startOffice)
-print("[Office] Auto Office Loop dimulai!")
+print("[Office] Auto Office Loop dimulai! v1")
