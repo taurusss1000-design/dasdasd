@@ -2161,6 +2161,9 @@ if bCfg.TimeoutEnabled ~= nil then BaristaModule.timeoutEnabled = bCfg.TimeoutEn
 if bCfg.KickLimitMinutes then BaristaModule.kickLimitMinutes = bCfg.KickLimitMinutes end
 if bCfg.KickLimitEnabled ~= nil then BaristaModule.kickLimitEnabled = bCfg.KickLimitEnabled end
 
+if oCfg.TimeoutMax     then OfficeModule.timeoutMax     = oCfg.TimeoutMax     end
+if oCfg.TimeoutEnabled ~= nil then OfficeModule.timeoutEnabled = oCfg.TimeoutEnabled end
+
 -- =============================================
 -- UI — JOB SECTION 
 -- =============================================
@@ -2221,6 +2224,37 @@ OfficeToggle = JobSectionOffice:Toggle({
         else
             OfficeModule:Stop()
         end
+    end
+})
+
+JobSectionOffice:Input({
+    Type        = "Input",
+    Title       = "Timeout Office (detik)",
+    Value       = tostring(OfficeModule.timeoutMax),
+    Placeholder = "Contoh: 60",
+    Callback    = function(value)
+        local num = tonumber(value)
+        if num and num > 0 then
+            OfficeModule.timeoutMax = num
+            if not isOLoading then
+                oCfg.TimeoutMax = num
+                saveOfficeConfig(oCfg)
+                print("Office Timeout diset ke: " .. tostring(num) .. " detik")
+            end
+        end
+    end
+})
+
+local OfficeRestartToggle = JobSectionOffice:Toggle({
+    Title = "Auto Restart Office",
+    Value = false,
+    Callback = function(on)
+        OfficeModule.timeoutEnabled = on
+        if not isOLoading then
+            oCfg.TimeoutEnabled = on
+            saveOfficeConfig(oCfg)
+        end
+        if on then OfficeModule.lastActivity = tick() end
     end
 })
 
@@ -3542,6 +3576,7 @@ task.spawn(function()
     if bCfg.KickLimitEnabled then kickToggle:Set(true)     end
     if bCfg.AutoBarista      then baristaToggle:Set(true)  end
     if oCfg.AutoOffice       then OfficeToggle:Set(true)   end
+    if oCfg.TimeoutEnabled   then OfficeRestartToggle:Set(true) end
     isBLoading = false
     isOLoading = false
 
