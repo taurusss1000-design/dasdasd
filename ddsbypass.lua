@@ -125,7 +125,7 @@ WindUI:SetTheme("MachTheme")
 
 Window:Tag({ Title = "PREMIUM", Color = Mains })
 Window:Tag({ Title = "BETA", Color = Purple })
-Window:Tag({ Title = "V1.3", Color = Purple })
+Window:Tag({ Title = "V1.2", Color = Purple })
 
 local TweenService = game:GetService("TweenService")
 local protectGui
@@ -2303,49 +2303,9 @@ whOfficeToggle = OfficeWebhookSection:Toggle({
                     print("Webhook Office aktif! Uang awal: " .. formatUang(uangAwalOffice))
                 end
 
-                -- INI YANG KURANG: set onCycle biar auto kirim tiap print selesai
-                OfficeModule.onCycle = function()
-                    if not webhookOfficeActive or webhookOfficeURL == "" then return end
-                    local pGui = LocalPlayer:WaitForChild("PlayerGui")
-                    local mLabel = nil
-                    pcall(function() mLabel = pGui.MainUI.Frame4.TextLabel end)
-                    if not mLabel then return end
-
-                    local uangSekarang = parseUang(mLabel.Text)
-                    if uangAwalOffice == nil then uangAwalOffice = uangSekarang end
-                    local profit = uangSekarang - uangAwalOffice
-                    local cycle  = OfficeModule.totalCycle or 0
-
-                    local payload = {
-                        embeds = {{
-                            title       = "💼 Office Job - Cycle Selesai",
-                            description = "**Status:** `✅ Print Berhasil`",
-                            color       = 3066993,
-                            fields      = {
-                                { name = "💵 Uang Awal",     value = "**" .. formatUang(uangAwalOffice) .. "**",     inline = false },
-                                { name = "💰 Uang Sekarang", value = "**" .. formatUang(uangSekarang) .. "**",       inline = false },
-                                { name = "📈 Total Profit",  value = "```diff\n+ " .. formatUang(profit) .. "\n```", inline = false },
-                                { name = "🔄 Total Cycle",   value = "**" .. tostring(cycle) .. "x**",               inline = false },
-                            },
-                            footer = { text = "DDS Premium Script   Time: " .. os.date("%H:%M:%S") }
-                        }}
-                    }
-                    local body = HttpService:JSONEncode(payload)
-                    task.spawn(function()
-                        pcall(function()
-                            if syn and syn.request then
-                                syn.request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
-                            elseif request then
-                                request({ Url = webhookOfficeURL, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body })
-                            end
-                        end)
-                    end)
-                    print("[Office] Webhook terkirim! Cycle #" .. tostring(cycle))
-                end
-
+                -- onCycle sudah di-set ke sendOfficeWebhook di loader OfficeModule
+                -- Jadi tidak perlu di-set ulang atau di-nil-kan di sini
             else
-                -- Matikan onCycle saat toggle off
-                OfficeModule.onCycle = nil
                 print("Webhook Office dimatikan!")
             end
         end
@@ -2932,7 +2892,7 @@ local AutoRejoin = (function()
     -- URL script yang akan di-execute otomatis setelah rejoin
     -- WARNING: Ganti SCRIPT_URL dengan URL script UTAMA (misal pastebin/github raw cobadds.lua lo)
     -- JANGAN pakai URL vyperui.lua karena itu cuma UI-nya saja!
-    local SCRIPT_URL = "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/ddsbypass.lua" 
+    local SCRIPT_URL = "https://raw.githubusercontent.com/AwoakwoakSikat/emangbowleh/refs/heads/main/loader-news.lua" 
     local EXEC_DELAY = 30 -- detik tunggu sebelum execute setelah rejoin (dilebihin dikit biar game load)
 
     -- Cari queue_on_teleport dari berbagai executor secara aman
