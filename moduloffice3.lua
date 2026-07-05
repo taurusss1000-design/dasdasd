@@ -403,14 +403,6 @@ local function startOffice()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hum or not hrp then task.wait(1) continue end
 
-        local function checkActivePrinter()
-            for pName, _ in pairs(Printers) do
-                local ok, prompt = pcall(function() return Workspace.Computers[pName].Part.ProximityPrompt end)
-                if ok and prompt and prompt.Enabled then return pName end
-            end
-            return nil
-        end
-
         local stopMath = false
         local printerAssigned = nil
 
@@ -543,15 +535,6 @@ local function startOffice()
         while tick() - waitResT < 1.5 and officeRunning do
             if printerAssigned then break end
             task.wait(0.1)
-        end
-
-        -- Cek lagi barangkali prompt aktif diam-diam saat duduk tanpa event
-        if not printerAssigned then
-            printerAssigned = checkActivePrinter()
-            if printerAssigned then
-                print("[Office] Ditemukan tugas print dari prompt: " .. printerAssigned)
-                stopMath = true
-            end
         end
 
         -- STEP 2: Auto jawab soal (hanya jika belum disuruh print)
