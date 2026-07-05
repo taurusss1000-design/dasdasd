@@ -403,7 +403,34 @@ local function startOffice()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hum or not hrp then task.wait(1) continue end
 
-        -- STEP 1: Pilih kursi terdekat
+        -- Cek jika server sudah nyuruh print (recovery setelah relog)
+        local function checkActivePrinter()
+            for pName, _ in pairs(Printers) do
+                local ok, prompt = pcall(function() return Workspace.Computers[pName].Part.ProximityPrompt end)
+                if ok and prompt and prompt.Enabled then return pName end
+            end
+            return nil
+        end
+
+        local stopMath = false
+        local printerAssigned = checkActivePrinter()
+        
+        if printerAssigned then
+            print("[Office] Ditemukan tugas print tertunda: " .. printerAssigned)
+            stopMath = true
+        end
+
+        -- Hook event SEBELUM duduk (karena server kadang fire event tepat saat karakter duduk)
+        local printerConn
+        printerConn = RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
+            print("[Office] Assigned ke printer: " .. printerName)
+            stopMath = true
+            printerAssigned = printerName
+            if printerConn then printerConn:Disconnect() end
+        end)
+
+        if not printerAssigned then
+            -- STEP 1: Pilih kursi terdekat
         local closestSeat, closestDist = SeatPositions[1], math.huge
         for _, pos in ipairs(SeatPositions) do
             local dist = (hrp.Position - pos).Magnitude
@@ -500,77 +527,87 @@ local function startOffice()
             warn("[Office] Seat object tidak ditemukan!")
         end
 
-        if not officeRunning then break end
+        if not officeRunning then
+            pcall(function() if printerConn then printerConn:Disconnect() end end)
+            break
+        end
 
         if not duduk then
             warn("[Office] Gagal duduk, retry dari awal...")
+            pcall(function() if printerConn then printerConn:Disconnect() end end)
             task.wait(2)
             continue
         end
 
         task.wait(1)
-        if not officeRunning then break end
+        if not officeRunning then
+            pcall(function() if printerConn then printerConn:Disconnect() end end)
+            break
+        end
 
-        -- STEP 2: Auto jawab soal
-        local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-        local WorkGui = playerGui:WaitForChild("WorkGui")
-        local stopMath = false
-        local printerAssigned = nil
-
-        local function jawabSoal()
-            if not officeRunning then return end
-            local questionLabel = WorkGui:FindFirstChild("QuestionLabel")
-            if not questionLabel or not questionLabel.Visible or questionLabel.Text == "" then return end
-            local a, op, b = string.match(questionLabel.Text, "(%d+)%s*([%+%-%*/])%s*(%d+)")
-            if not a then return end
-            local n1, n2 = tonumber(a), tonumber(b)
-            local jawaban
-            if     op == "+" then jawaban = n1 + n2
-            elseif op == "-" then jawaban = n1 - n2
-            elseif op == "*" then jawaban = n1 * n2
-            elseif op == "/" and n2 ~= 0 then jawaban = n1 / n2
-            else return end
-            print("[Office] Soal: " .. questionLabel.Text .. " = " .. jawaban)
-            local frame = WorkGui:FindFirstChild("Frame")
-            if not frame then return end
-            for _, btn in pairs(frame:GetChildren()) do
-                if btn:IsA("TextButton") and btn.Visible and tonumber(btn.Text) == jawaban then
-                    task.wait(math.random(8, 25) / 10)
-                    if stopMath or not officeRunning then return end
-                    firesignal(btn.MouseButton1Click)
-                    print("[Office] Klik jawaban: " .. jawaban)
-                    return
-                end
+        -- Cek lagi barangkali prompt aktif diam-diam saat duduk
+        if not printerAssigned then
+            printerAssigned = checkActivePrinter()
+            if printerAssigned then
+                print("[Office] Ditemukan tugas print setelah duduk: " .. printerAssigned)
+                stopMath = true
             end
         end
 
-        -- Hook printer event
-        local printerConn
-        printerConn = RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
-            print("[Office] Assigned ke printer: " .. printerName)
-            stopMath = true
-            printerAssigned = printerName
-            printerConn:Disconnect()
-        end)
+        -- STEP 2: Auto jawab soal (hanya jika belum disuruh print)
+        if not printerAssigned then
+            local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+            local WorkGui = playerGui:WaitForChild("WorkGui")
 
-        -- Math loop
-        task.spawn(function()
-            while not stopMath and officeRunning do
-                task.wait(0.3)
-                if not officeRunning then break end
-                jawabSoal()
-                task.wait(math.random(4, 12) / 10)
+            local function jawabSoal()
+                if not officeRunning then return end
+                local questionLabel = WorkGui:FindFirstChild("QuestionLabel")
+                if not questionLabel or not questionLabel.Visible or questionLabel.Text == "" then return end
+                local a, op, b = string.match(questionLabel.Text, "(%d+)%s*([%+%-%*/])%s*(%d+)")
+                if not a then return end
+                local n1, n2 = tonumber(a), tonumber(b)
+                local jawaban
+                if     op == "+" then jawaban = n1 + n2
+                elseif op == "-" then jawaban = n1 - n2
+                elseif op == "*" then jawaban = n1 * n2
+                elseif op == "/" and n2 ~= 0 then jawaban = n1 / n2
+                else return end
+                print("[Office] Soal: " .. questionLabel.Text .. " = " .. jawaban)
+                local frame = WorkGui:FindFirstChild("Frame")
+                if not frame then return end
+                for _, btn in pairs(frame:GetChildren()) do
+                    if btn:IsA("TextButton") and btn.Visible and tonumber(btn.Text) == jawaban then
+                        task.wait(math.random(8, 25) / 10)
+                        if stopMath or not officeRunning then return end
+                        firesignal(btn.MouseButton1Click)
+                        print("[Office] Klik jawaban: " .. jawaban)
+                        return
+                    end
+                end
             end
-            print("[Office] Math loop berhenti!")
-        end)
 
-        print("[Office] Auto jawab soal aktif!")
+            -- Math loop
+            task.spawn(function()
+                while not stopMath and officeRunning do
+                    task.wait(0.3)
+                    if not officeRunning then break end
+                    jawabSoal()
+                    task.wait(math.random(4, 12) / 10)
+                end
+                print("[Office] Math loop berhenti!")
+            end)
 
-        -- Tunggu sampai printer assigned
-        repeat task.wait(0.5) until printerAssigned ~= nil or not officeRunning
+            print("[Office] Auto jawab soal aktif!")
+
+            -- Tunggu sampai printer assigned
+            repeat task.wait(0.5) until printerAssigned ~= nil or not officeRunning
+        end
+        
+        -- Cleanup event
+        pcall(function() if printerConn then printerConn:Disconnect() end end)
+        
         if not officeRunning then
             stopMath = true
-            pcall(function() printerConn:Disconnect() end)
             break
         end
 
