@@ -403,7 +403,6 @@ local function startOffice()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hum or not hrp then task.wait(1) continue end
 
-        -- Cek jika server sudah nyuruh print (recovery setelah relog)
         local function checkActivePrinter()
             for pName, _ in pairs(Printers) do
                 local ok, prompt = pcall(function() return Workspace.Computers[pName].Part.ProximityPrompt end)
@@ -413,24 +412,17 @@ local function startOffice()
         end
 
         local stopMath = false
-        local printerAssigned = checkActivePrinter()
-        
-        if printerAssigned then
-            print("[Office] Ditemukan tugas print tertunda: " .. printerAssigned)
-            stopMath = true
-        end
+        local printerAssigned = nil
 
-        -- Hook event SEBELUM duduk (karena server kadang fire event tepat saat karakter duduk)
+        -- Hook event SEBELUM duduk
         local printerConn
         printerConn = RS.JobEvents.AssignPrintJob.OnClientEvent:Connect(function(printerName)
             print("[Office] Assigned ke printer: " .. printerName)
             stopMath = true
             printerAssigned = printerName
-            if printerConn then printerConn:Disconnect() end
         end)
 
-        if not printerAssigned then
-            -- STEP 1: Pilih kursi terdekat
+        -- STEP 1: Pilih kursi terdekat
         local closestSeat, closestDist = SeatPositions[1], math.huge
         for _, pos in ipairs(SeatPositions) do
             local dist = (hrp.Position - pos).Magnitude
@@ -544,13 +536,20 @@ local function startOffice()
             pcall(function() if printerConn then printerConn:Disconnect() end end)
             break
         end
-        end -- Tutup 'if not printerAssigned then' dari STEP 1
 
-        -- Cek lagi barangkali prompt aktif diam-diam saat duduk
+        -- Tunggu 1.5 detik setelah duduk buat liat reaksi server (apakah langsung disuruh print?)
+        print("[Office] Tunggu respon server setelah duduk...")
+        local waitResT = tick()
+        while tick() - waitResT < 1.5 and officeRunning do
+            if printerAssigned then break end
+            task.wait(0.1)
+        end
+
+        -- Cek lagi barangkali prompt aktif diam-diam saat duduk tanpa event
         if not printerAssigned then
             printerAssigned = checkActivePrinter()
             if printerAssigned then
-                print("[Office] Ditemukan tugas print setelah duduk: " .. printerAssigned)
+                print("[Office] Ditemukan tugas print dari prompt: " .. printerAssigned)
                 stopMath = true
             end
         end
