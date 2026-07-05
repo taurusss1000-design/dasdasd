@@ -1997,6 +1997,7 @@ function sendCourierWebhook()
     end)
 end
 
+local OfficeModule -- Forward declaration agar bisa dibaca oleh sendOfficeWebhook
 local whOfficeConfigPath = "DDS_WebhookOfficeConfig.json"
 local function loadOfficeWebhookConfig()
     local ok, data = pcall(readfile, whOfficeConfigPath)
@@ -2089,7 +2090,7 @@ end
 -- =============================================
 -- AUTO JOB Office Loader
 -- =============================================
-local OfficeModule = loadstring(game:HttpGet(
+OfficeModule = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/moduloffice1.lua?t=" .. tostring(tick())
 ))()
 
