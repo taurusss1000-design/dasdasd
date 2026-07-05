@@ -544,6 +544,7 @@ local function startOffice()
             pcall(function() if printerConn then printerConn:Disconnect() end end)
             break
         end
+        end -- Tutup 'if not printerAssigned then' dari STEP 1
 
         -- Cek lagi barangkali prompt aktif diam-diam saat duduk
         if not printerAssigned then
