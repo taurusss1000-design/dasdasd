@@ -33,6 +33,9 @@ local Printers = {
 
 local OfficeModule = {}
 OfficeModule.totalCycle = 0
+OfficeModule.timeoutEnabled = false
+OfficeModule.timeoutMax = 300
+OfficeModule.lastActivity = 0
 local officeRunning = false
 
 local RetryOffsets = {
@@ -270,6 +273,7 @@ local function holdPrinterUntilSuccess(printerName, targetPos)
         if printSuccess then
             print("[Office] Print berhasil! Lanjut loop...")
             OfficeModule.totalCycle = (OfficeModule.totalCycle or 0) + 1
+            OfficeModule.lastActivity = tick()
             if OfficeModule.onCycle then pcall(OfficeModule.onCycle) end
             return true
         else
@@ -416,6 +420,7 @@ local function startOffice()
             print("[Office] Assigned ke printer: " .. printerName)
             stopMath = true
             printerAssigned = printerName
+            OfficeModule.lastActivity = tick()
         end)
 
         -- STEP 1: Pilih kursi terdekat
@@ -568,6 +573,7 @@ local function startOffice()
                         if stopMath or not officeRunning then return end
                         firesignal(btn.MouseButton1Click)
                         print("[Office] Klik jawaban: " .. jawaban)
+                        OfficeModule.lastActivity = tick()
                         return
                     end
                 end
@@ -630,13 +636,50 @@ end
 function OfficeModule:Start()
     if officeRunning then return end
     officeRunning = true
+    OfficeModule.lastActivity = tick()
+    
     task.spawn(startOffice)
+    
+    -- Watchdog Timeout Thread
+    task.spawn(function()
+        while officeRunning do
+            task.wait(1)
+            if not officeRunning then break end
+            
+            if OfficeModule.timeoutEnabled and (tick() - OfficeModule.lastActivity > OfficeModule.timeoutMax) then
+                print("[Office] Timeout terdeteksi (" .. OfficeModule.timeoutMax .. "s)! Restarting module...")
+                OfficeModule:Stop()
+                task.wait(2)
+                
+                -- Coba loncat untuk reset karakter (misal stuck duduk)
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then 
+                    pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+                end
+                
+                task.wait(1)
+                OfficeModule:Start()
+                break
+            end
+        end
+    end)
+    
     print("[Office] Auto Office Module Started!")
 end
 
 function OfficeModule:Stop()
     officeRunning = false
     print("[Office] Auto Office Module Stopped!")
+end
+
+function OfficeModule:IsRunning()
+    return officeRunning
+end
+
+function OfficeModule:SetTimeout(seconds, enabled)
+    self.timeoutMax = seconds or 300
+    self.timeoutEnabled = enabled ~= false
 end
 
 function OfficeModule:IsRunning()
