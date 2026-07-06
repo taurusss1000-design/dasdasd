@@ -5,8 +5,8 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 
 -- Nonaktifkan print & warn untuk modul ini agar console tidak spam
-local print = function(...) end
-local warn = function(...) end
+-- local print = function(...) end
+-- local warn = function(...) end
 
 -- =================================================================
 -- DATA
