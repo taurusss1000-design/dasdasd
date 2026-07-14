@@ -134,13 +134,11 @@ function PoliceModule:Start()
         if not policeRunning then return end
 
         print("[Police] Spawn Kendaraan...")
-        local SELECTED_CAR = _G.SpawnCarSelected or "Yamahax-MioSporty"
-        local SpawnCarEvent = ReplicatedStorage:FindFirstChild("SpawnCar", true)
-        if SpawnCarEvent then
-            SpawnCarEvent:FireServer(SELECTED_CAR)
-        else
-            pcall(function() ReplicatedStorage.SpawnCarEvents.SpawnCar:FireServer(SELECTED_CAR) end)
-        end
+        local SELECTED_CAR = (_G.SpawnCar and _G.SpawnCar.SelectedCar and _G.SpawnCar.SelectedCar ~= "Refresh dulu...") and _G.SpawnCar.SelectedCar or "Yamahax-MioSporty"
+        
+        pcall(function()
+            ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR)
+        end)
 
         task.wait(5)
         if not policeRunning then return end
