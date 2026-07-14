@@ -117,9 +117,13 @@ end
 -- MAIN LOGIC
 -- =================================================================
 
+local missionData = nil
+local policeEventConn = nil
+
 function PoliceModule:Start()
     if policeRunning then return end
     policeRunning = true
+    missionData = nil
     
     task.spawn(function()
         print("[Police] Mengambil Job Police...")
@@ -179,7 +183,30 @@ function PoliceModule:Start()
             
             task.wait(0.5)
             if not policeRunning then return end
+
+            -- =========================================================
+            -- LISTEN MISSION DULU sebelum hold start job
+            -- =========================================================
+            print("[Police] Listening PoliceEvent untuk mission data...")
+            local PoliceEvent = ReplicatedStorage:WaitForChild("PoliceAssets"):WaitForChild("PoliceEvent")
             
+            missionData = nil
+            if policeEventConn then policeEventConn:Disconnect() end
+            
+            policeEventConn = PoliceEvent.OnClientEvent:Connect(function(eventType, data)
+                if eventType == "CreateMission" and data and data.missionLocation then
+                    missionData = {
+                        missionType = tostring(data.missionType),
+                        missionLocation = data.missionLocation,
+                    }
+                    print("[Police] Mission diterima! Type: " .. missionData.missionType)
+                    print("[Police] Location: " .. tostring(missionData.missionLocation))
+                end
+            end)
+            
+            -- =========================================================
+            -- HOLD START JOB
+            -- =========================================================
             print("[Police] Hold start job prompt...")
             pcall(function()
                 local prompt = Workspace:FindFirstChild("PoliceJob", true) and Workspace.PoliceJob.Start.ProximityPrompt
@@ -196,13 +223,70 @@ function PoliceModule:Start()
                 end
             end)
             print("[Police] Police Duty started!")
+            
+            -- =========================================================
+            -- TUNGGU MISSION DATA MASUK
+            -- =========================================================
+            print("[Police] Menunggu mission data dari server...")
+            local waitStart = tick()
+            while policeRunning and not missionData do
+                task.wait(0.5)
+                if tick() - waitStart > 30 then
+                    print("[Police] Timeout menunggu mission data (30 detik)!")
+                    break
+                end
+            end
+            if not policeRunning then return end
+            
+            if not missionData then
+                print("[Police] Gagal mendapatkan mission data!")
+                return
+            end
+            
+            -- =========================================================
+            -- NAIK KENDARAAN LAGI & TWEEN KE LOKASI MISI
+            -- =========================================================
+            print("[Police] Mission Type: " .. missionData.missionType)
+            print("[Police] Tween ke lokasi misi: " .. tostring(missionData.missionLocation))
+            
+            -- Spawn kendaraan lagi
+            print("[Police] Spawn Kendaraan untuk ke lokasi misi...")
+            pcall(function()
+                ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR)
+            end)
+            task.wait(5)
+            if not policeRunning then return end
+            
+            print("[Police] Naik Kendaraan...")
+            rideVehicle()
+            task.wait(1)
+            if not policeRunning then return end
+            
+            local motor2 = findVehicle()
+            if motor2 then
+                local missionLoc = missionData.missionLocation
+                print("[Police] Tweening ke lokasi misi dengan speed 100...")
+                _tweenVehicle(motor2, CFrame.new(missionLoc.X, missionLoc.Y, missionLoc.Z), 100)
+            end
+            
+            task.wait(0.5)
+            if not policeRunning then return end
+            
+            print("[Police] Sampai di lokasi misi!")
+            print("[Police] Mission Type: " .. missionData.missionType)
+            -- TODO: Lanjut handle misi berdasarkan tipe (penertiban parkir / insiden mogok)
         end
     end)
 end
 
 function PoliceModule:Stop()
     policeRunning = false
+    if policeEventConn then
+        policeEventConn:Disconnect()
+        policeEventConn = nil
+    end
     print("[Police] Auto Police Dihentikan!")
 end
 
 return PoliceModule
+
