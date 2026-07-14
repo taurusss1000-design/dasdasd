@@ -5,6 +5,9 @@ local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 
+local PoliceModule = {}
+local policeRunning = false
+
 -- =================================================================
 -- HELPERS (Diambil dari metode auto courier)
 -- =================================================================
@@ -111,78 +114,97 @@ local function _tweenVehicle(vehicle, targetCFrame, speed)
 end
 
 -- =================================================================
--- MAIN STEP 1: START POLICE JOB
+-- MAIN LOGIC
 -- =================================================================
 
-print("[Police] Mengambil Job Police...")
-local TeamChangeRequest = ReplicatedStorage:FindFirstChild("TeamChangeRequest", true)
-if TeamChangeRequest then
-    TeamChangeRequest:FireServer("Police", 0, 0, 1428858969, "Detector")
-else
-    -- Fallback ke path dari modul
-    pcall(function() ReplicatedStorage.JobEvents.TeamChangeRequest:FireServer("Police", 0, 0, 1428858969, "Detector") end)
-end
-
-task.wait(1.5)
-
-print("[Police] Spawn Kendaraan...")
-local SELECTED_CAR = _G.SpawnCarSelected or "Yamahax-MioSporty"
-local SpawnCarEvent = ReplicatedStorage:FindFirstChild("SpawnCar", true)
-if SpawnCarEvent then
-    SpawnCarEvent:FireServer(SELECTED_CAR)
-else
-    pcall(function() ReplicatedStorage.SpawnCarEvents.SpawnCar:FireServer(SELECTED_CAR) end)
-end
-
-task.wait(5)
-
-print("[Police] Naik Kendaraan...")
-rideVehicle()
-task.wait(1)
-
-local motor = findVehicle()
-if motor then
-    print("[Police] Tweening ke lokasi start job dengan speed 100...")
-    local tweenLoc = Vector3.new(2836.453857421875, 4.23581600189209, -830.5399169921875)
-    _tweenVehicle(motor, CFrame.new(tweenLoc), 100) -- menggunakan param speed, durasi dikalkulasi di dalam function
-end
-
-task.wait(0.5)
-
-print("[Police] Turun dari kendaraan...")
-jumpAndWait()
-
-local char = LocalPlayer.Character
-local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-if humanoid and hrp then
-    local startJobLoc = Vector3.new(2839.519287109375, 4.23581600189209, -841.3355712890625)
-    print("[Police] Berjalan ke start job prompt...")
-    humanoid:MoveTo(startJobLoc)
+function PoliceModule:Start()
+    if policeRunning then return end
+    policeRunning = true
     
-    -- Pastikan player bener-bener sampai lokasi (jarak <= 4)
-    local t = tick()
-    repeat
-        task.wait(0.1)
-    until (hrp.Position - startJobLoc).Magnitude <= 4 or (tick() - t > 8)
-    
-    task.wait(0.5)
-    
-    print("[Police] Hold start job prompt...")
-    pcall(function()
-        local prompt = Workspace:FindFirstChild("PoliceJob", true) and Workspace.PoliceJob.Start.ProximityPrompt
-        if prompt then
-            if fireproximityprompt then
-                fireproximityprompt(prompt)
-            else
-                prompt:InputHoldBegin()
-                task.wait(prompt.HoldDuration + 0.1)
-                prompt:InputHoldEnd()
-            end
+    task.spawn(function()
+        print("[Police] Mengambil Job Police...")
+        local TeamChangeRequest = ReplicatedStorage:FindFirstChild("TeamChangeRequest", true)
+        if TeamChangeRequest then
+            TeamChangeRequest:FireServer("Police", 0, 0, 1428858969, "Detector")
         else
-            print("[Police] Prompt start job tidak ditemukan!")
+            pcall(function() ReplicatedStorage.JobEvents.TeamChangeRequest:FireServer("Police", 0, 0, 1428858969, "Detector") end)
+        end
+
+        task.wait(1.5)
+        if not policeRunning then return end
+
+        print("[Police] Spawn Kendaraan...")
+        local SELECTED_CAR = _G.SpawnCarSelected or "Yamahax-MioSporty"
+        local SpawnCarEvent = ReplicatedStorage:FindFirstChild("SpawnCar", true)
+        if SpawnCarEvent then
+            SpawnCarEvent:FireServer(SELECTED_CAR)
+        else
+            pcall(function() ReplicatedStorage.SpawnCarEvents.SpawnCar:FireServer(SELECTED_CAR) end)
+        end
+
+        task.wait(5)
+        if not policeRunning then return end
+
+        print("[Police] Naik Kendaraan...")
+        rideVehicle()
+        task.wait(1)
+        if not policeRunning then return end
+
+        local motor = findVehicle()
+        if motor then
+            print("[Police] Tweening ke lokasi start job dengan speed 100...")
+            local tweenLoc = Vector3.new(2836.453857421875, 4.23581600189209, -830.5399169921875)
+            _tweenVehicle(motor, CFrame.new(tweenLoc), 100)
+        end
+
+        task.wait(0.5)
+        if not policeRunning then return end
+
+        print("[Police] Turun dari kendaraan...")
+        jumpAndWait()
+        if not policeRunning then return end
+
+        local char = LocalPlayer.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if humanoid and hrp then
+            local startJobLoc = Vector3.new(2839.519287109375, 4.23581600189209, -841.3355712890625)
+            print("[Police] Berjalan ke start job prompt...")
+            humanoid:MoveTo(startJobLoc)
+            
+            local t = tick()
+            repeat
+                task.wait(0.1)
+                if not policeRunning then return end
+            until (hrp.Position - startJobLoc).Magnitude <= 4 or (tick() - t > 8)
+            
+            task.wait(0.5)
+            if not policeRunning then return end
+            
+            print("[Police] Hold start job prompt...")
+            pcall(function()
+                local prompt = Workspace:FindFirstChild("PoliceJob", true) and Workspace.PoliceJob.Start.ProximityPrompt
+                if prompt then
+                    if fireproximityprompt then
+                        fireproximityprompt(prompt)
+                    else
+                        prompt:InputHoldBegin()
+                        task.wait(prompt.HoldDuration + 0.1)
+                        prompt:InputHoldEnd()
+                    end
+                else
+                    print("[Police] Prompt start job tidak ditemukan!")
+                end
+            end)
+            print("[Police] Police Duty started!")
         end
     end)
-    print("[Police] Police Duty started!")
 end
+
+function PoliceModule:Stop()
+    policeRunning = false
+    print("[Police] Auto Police Dihentikan!")
+end
+
+return PoliceModule
