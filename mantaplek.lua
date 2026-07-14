@@ -2103,7 +2103,7 @@ OfficeModule.onCycle = sendOfficeWebhook
 -- AUTO JOB POLICE LOADER
 -- =============================================
 PoliceModule = loadstring(game:HttpGet(
-    "https://cdn.jsdelivr.net/gh/taurusss1000-design/dasdasd@main/policijembuts.lua"
+    "https://raw.githubusercontent.com/taurusss1000-design/dasdasd/refs/heads/main/policijembuts.lua"
 ))()
 
 
