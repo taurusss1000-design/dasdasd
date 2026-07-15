@@ -93,10 +93,32 @@ local function _tweenVehicle(vehicle, targetCFrame, speed)
     local distance = (mainPart.Position - targetCFrame.Position).Magnitude
     local duration = distance / speed
     
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(mainPart, tweenInfo, { CFrame = targetCFrame })
-    tween:Play()
-    tween.Completed:Wait()
+    if distance > 100 then
+        -- SKY TWEEN (Bypass Adonis Noclip/Collision)
+        -- 1. Naik ke atas 200 studs biar aman dari bangunan
+        local flyHeight = 200
+        local upCFrame = mainPart.CFrame + Vector3.new(0, flyHeight, 0)
+        local tUp = TweenService:Create(mainPart, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { CFrame = upCFrame })
+        tUp:Play()
+        tUp.Completed:Wait()
+        
+        -- 2. Terbang ke koordinat target tapi tetap di langit
+        local airTarget = targetCFrame + Vector3.new(0, flyHeight, 0)
+        local tFly = TweenService:Create(mainPart, TweenInfo.new(duration, Enum.EasingStyle.Linear), { CFrame = airTarget })
+        tFly:Play()
+        tFly.Completed:Wait()
+        
+        -- 3. Turun ke posisi asli target
+        local tDown = TweenService:Create(mainPart, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { CFrame = targetCFrame })
+        tDown:Play()
+        tDown.Completed:Wait()
+    else
+        -- Kalau dekat, tween biasa langsung
+        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(mainPart, tweenInfo, { CFrame = targetCFrame })
+        tween:Play()
+        tween.Completed:Wait()
+    end
     
     -- Hapus weld sementara
     for _, weld in ipairs(tempWelds) do
@@ -134,6 +156,9 @@ end
 
 -- Hitung posisi tween yang aman (offset dari VehicleObject biar ga nyangkut)
 local function getSafeTweenPosition(missionLoc)
+    -- Tambahan offset Y biar mobil gak masuk tanah pas nyampe (mencegah glitch/kick)
+    local yOffset = 5
+    
     local vehicleObj = findVehicleObject()
     if vehicleObj then
         local vSize = vehicleObj.Size
@@ -147,14 +172,15 @@ local function getSafeTweenPosition(missionLoc)
             dir = Vector3.new(dir.X, 0, dir.Z).Unit
         end
         local safePos = vehicleObj.Position + dir * offset
-        safePos = Vector3.new(safePos.X, missionLoc.Y, safePos.Z)
+        -- Pastikan targetnya melayang dikit (Y + yOffset)
+        safePos = Vector3.new(safePos.X, missionLoc.Y + yOffset, safePos.Z)
         print("[Police] VehicleObject ditemukan! Size: " .. tostring(vSize))
         print("[Police] Safe tween offset: " .. tostring(offset) .. " studs")
         return safePos
     else
         -- VehicleObject belum ada, offset 15 studs ke arah X+ sebagai fallback
         print("[Police] VehicleObject belum ditemukan, pakai offset default 15 studs")
-        return missionLoc + Vector3.new(15, 0, 0)
+        return missionLoc + Vector3.new(15, yOffset, 0)
     end
 end
 
