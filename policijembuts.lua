@@ -325,6 +325,87 @@ local function handlePenertibanParkir()
     return found
 end
 
+-- Handle job InsidenMogok:
+-- 1. Ambil VehicleObject (lewat helper findVehicleObject)
+-- 2. Equip TrafficCone
+-- 3. Teleport & letakkan cone sesuai requiredCones dari server
+-- 4. Unequip
+local function handleInsidenMogok(requiredCones)
+    requiredCones = requiredCones or 5
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local camera = Workspace.CurrentCamera
+    
+    if not hrp then
+        print("[Police][Mogok] HumanoidRootPart tidak ditemukan!")
+        return false
+    end
+    
+    local vehicleObj = findVehicleObject()
+    if not vehicleObj then
+        print("[Police][Mogok] VehicleObject tidak ditemukan!")
+        return false
+    end
+    
+    local vehiclePos = vehicleObj.Position
+    local vehicleSize = vehicleObj.Size
+    local offset = math.max(vehicleSize.X, vehicleSize.Z) / 2 + 3
+    
+    local conePositions = {
+        vehiclePos + Vector3.new(offset, 0, 0),
+        vehiclePos + Vector3.new(-offset, 0, 0),
+        vehiclePos + Vector3.new(0, 0, offset),
+        vehiclePos + Vector3.new(0, 0, -offset),
+        vehiclePos + Vector3.new(offset, 0, offset),
+        vehiclePos + Vector3.new(-offset, 0, offset),
+        vehiclePos + Vector3.new(offset, 0, -offset),
+        vehiclePos + Vector3.new(-offset, 0, -offset),
+    }
+    
+    local backpack = LocalPlayer.Backpack
+    local tool = backpack:FindFirstChild("TrafficCone") or char:FindFirstChild("TrafficCone")
+    if tool then
+        tool.Parent = char
+        print("[Police][Mogok] TrafficCone equipped!")
+    else
+        print("[Police][Mogok] TrafficCone tidak ditemukan!")
+        return false
+    end
+    
+    task.wait(0.5)
+    
+    for i = 1, math.min(requiredCones, #conePositions) do
+        if not policeRunning then return false end
+        local pos = conePositions[i]
+        
+        -- Teleport player ke posisi
+        hrp.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+        task.wait(0.4)
+        
+        -- Arahkan cursor ke tanah di depan player
+        local groundPos = pos + Vector3.new(0, -3, 0)
+        local screenPos, onScreen = camera:WorldToScreenPoint(groundPos)
+        if onScreen and mousemoveabs then
+            mousemoveabs(screenPos.X, screenPos.Y)
+            task.wait(0.1)
+        end
+        
+        tool:Activate()
+        print("[Police][Mogok] Cone " .. i .. "/" .. requiredCones .. " placed!")
+        task.wait(0.5)
+    end
+    
+    local freshChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = freshChar:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:UnequipTools()
+        print("[Police][Mogok] TrafficCone unequipped!")
+    end
+    
+    print("[Police][Mogok] Job InsidenMogok SELESAI!")
+    return true
+end
+
 -- =================================================================
 -- MAIN LOGIC
 -- =================================================================
@@ -411,6 +492,7 @@ function PoliceModule:Start()
                     missionData = {
                         missionType = tostring(data.missionType),
                         missionLocation = data.missionLocation,
+                        requiredCones = data.requiredCones,
                     }
                     print("[Police] Mission diterima! Type: " .. missionData.missionType)
                     print("[Police] Location: " .. tostring(missionData.missionLocation))
@@ -499,8 +581,11 @@ function PoliceModule:Start()
             if missionData.missionType == "PenertibanParkir" then
                 print("[Police] === AUTO HANDLE: PenertibanParkir ===")
                 handlePenertibanParkir()
+            elseif missionData.missionType == "InsidenMogok" then
+                print("[Police] === AUTO HANDLE: InsidenMogok ===")
+                handleInsidenMogok(missionData.requiredCones)
             else
-                -- InsidenMogok atau tipe lain → manual dulu
+                -- Tipe lain → manual dulu
                 print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
                 print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
             end
@@ -573,6 +658,9 @@ function PoliceModule:Start()
                 if missionData.missionType == "PenertibanParkir" then
                     print("[Police] === AUTO HANDLE: PenertibanParkir ===")
                     handlePenertibanParkir()
+                elseif missionData.missionType == "InsidenMogok" then
+                    print("[Police] === AUTO HANDLE: InsidenMogok ===")
+                    handleInsidenMogok(missionData.requiredCones)
                 else
                     print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
                     print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
