@@ -191,12 +191,12 @@ local function handlePenertibanParkir()
     
     local vehiclePos = vehicleObj.Position
     local vehicleSize = vehicleObj.Size
-    -- Radius orbit: setengah ukuran terbesar + 7 studs (ga terlalu mepet, ga terlalu jauh)
-    local radius = math.max(vehicleSize.X, vehicleSize.Z) / 2 + 7
+    -- Radius orbit awal (diset 7, lalu makin dekat tiap putaran)
+    local startRadius = 7
     
     print("[Police][Parkir] VehicleObject pos: " .. tostring(vehiclePos))
     print("[Police][Parkir] VehicleObject size: " .. tostring(vehicleSize))
-    print("[Police][Parkir] Orbit radius: " .. tostring(radius))
+    print("[Police][Parkir] Orbit radius awal: " .. tostring(startRadius))
     
     -- Equip BukuTilang
     local backpack = LocalPlayer.Backpack
@@ -217,7 +217,7 @@ local function handlePenertibanParkir()
     -- Walk orbit memutari objek, cari ProximityPrompt
     local found = false
     local NUM_POINTS = 16 -- 16 titik orbit (setiap 22.5 derajat)
-    local MAX_LAPS = 3   -- max 3 putaran
+    local MAX_LAPS = 5   -- max 5 putaran
     
     -- Helper: cek apakah prompt "Issue Traffic Ticket" ada dan dalam jangkauan
     local function checkForPrompt()
@@ -240,7 +240,9 @@ local function handlePenertibanParkir()
     print("[Police][Parkir] Mulai orbit memutari objek...")
     
     for lap = 1, MAX_LAPS do
-        print("[Police][Parkir] Putaran " .. lap .. "/" .. MAX_LAPS)
+        -- Tiap putaran radius berkurang 1 stud, jadi makin dekat ke mobil
+        local currentRadius = startRadius - (lap - 1) * 1
+        print("[Police][Parkir] Putaran " .. lap .. "/" .. MAX_LAPS .. " dengan radius " .. currentRadius)
         for i = 0, NUM_POINTS - 1 do
             if not policeRunning then return false end
             
@@ -267,9 +269,9 @@ local function handlePenertibanParkir()
             -- Hitung posisi orbit berikutnya
             local angle = (i / NUM_POINTS) * math.pi * 2
             local targetPos = Vector3.new(
-                vehiclePos.X + math.cos(angle) * radius,
+                vehiclePos.X + math.cos(angle) * currentRadius,
                 hrp.Position.Y,
-                vehiclePos.Z + math.sin(angle) * radius
+                vehiclePos.Z + math.sin(angle) * currentRadius
             )
             
             humanoid:MoveTo(targetPos)
