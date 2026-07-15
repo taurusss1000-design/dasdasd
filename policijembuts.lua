@@ -114,6 +114,213 @@ local function _tweenVehicle(vehicle, targetCFrame, speed)
 end
 
 -- =================================================================
+-- HELPERS: MISSION HANDLERS
+-- =================================================================
+
+-- Cari VehicleObject di ActiveMissions untuk tau posisi & ukuran objek
+local function findVehicleObject()
+    local activeMissions = Workspace:FindFirstChild("ActiveMissions")
+    if not activeMissions then return nil end
+    for _, child in pairs(activeMissions:GetDescendants()) do
+        if child:IsA("BasePart") and child.Name == "VehicleObject" then
+            return child
+        end
+    end
+    return nil
+ end
+
+-- Hitung posisi tween yang aman (offset dari VehicleObject biar ga nyangkut)
+local function getSafeTweenPosition(missionLoc)
+    local vehicleObj = findVehicleObject()
+    if vehicleObj then
+        local vSize = vehicleObj.Size
+        -- Offset = setengah ukuran terbesar + 10 studs biar aman ga nyangkut
+        local offset = math.max(vSize.X, vSize.Z) / 2 + 10
+        -- Arah dari VehicleObject ke missionLoc, kalau sama arah default ke X+
+        local dir = (missionLoc - vehicleObj.Position)
+        if dir.Magnitude < 1 then
+            dir = Vector3.new(1, 0, 0)
+        else
+            dir = Vector3.new(dir.X, 0, dir.Z).Unit
+        end
+        local safePos = vehicleObj.Position + dir * offset
+        safePos = Vector3.new(safePos.X, missionLoc.Y, safePos.Z)
+        print("[Police] VehicleObject ditemukan! Size: " .. tostring(vSize))
+        print("[Police] Safe tween offset: " .. tostring(offset) .. " studs")
+        return safePos
+    else
+        -- VehicleObject belum ada, offset 15 studs ke arah X+ sebagai fallback
+        print("[Police] VehicleObject belum ditemukan, pakai offset default 15 studs")
+        return missionLoc + Vector3.new(15, 0, 0)
+    end
+end
+
+-- Handle job PenertibanParkir:
+-- 1. Cari VehicleObject untuk tau posisi & ukuran
+-- 2. Equip BukuTilang
+-- 3. Walk orbit memutari objek sampai ProximityPrompt "Issue Traffic Ticket" muncul
+-- 4. Hold prompt
+-- 5. Unequip
+local function handlePenertibanParkir()
+    local char = LocalPlayer.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then
+        print("[Police][Parkir] Character/Humanoid tidak ditemukan!")
+        return false
+    end
+    
+    -- Cari VehicleObject
+    local vehicleObj = findVehicleObject()
+    if not vehicleObj then
+        print("[Police][Parkir] VehicleObject tidak ditemukan! Coba tunggu spawn...")
+        local waitVeh = tick()
+        while not vehicleObj and tick() - waitVeh < 10 do
+            task.wait(0.5)
+            vehicleObj = findVehicleObject()
+        end
+    end
+    
+    if not vehicleObj then
+        print("[Police][Parkir] VehicleObject tetap tidak ditemukan setelah 10 detik!")
+        return false
+    end
+    
+    local vehiclePos = vehicleObj.Position
+    local vehicleSize = vehicleObj.Size
+    -- Radius orbit: setengah ukuran terbesar + 7 studs (ga terlalu mepet, ga terlalu jauh)
+    local radius = math.max(vehicleSize.X, vehicleSize.Z) / 2 + 7
+    
+    print("[Police][Parkir] VehicleObject pos: " .. tostring(vehiclePos))
+    print("[Police][Parkir] VehicleObject size: " .. tostring(vehicleSize))
+    print("[Police][Parkir] Orbit radius: " .. tostring(radius))
+    
+    -- Equip BukuTilang
+    local backpack = LocalPlayer.Backpack
+    local tool = backpack:FindFirstChild("BukuTilang")
+    if not tool then
+        tool = char:FindFirstChild("BukuTilang")
+    end
+    if tool then
+        tool.Parent = char
+        print("[Police][Parkir] BukuTilang equipped!")
+    else
+        print("[Police][Parkir] BukuTilang tidak ditemukan!")
+        return false
+    end
+    
+    task.wait(0.5)
+    
+    -- Walk orbit memutari objek, cari ProximityPrompt
+    local found = false
+    local NUM_POINTS = 16 -- 16 titik orbit (setiap 22.5 derajat)
+    local MAX_LAPS = 3   -- max 3 putaran
+    
+    -- Helper: cek apakah prompt "Issue Traffic Ticket" ada dan dalam jangkauan
+    local function checkForPrompt()
+        local activeMissions = Workspace:FindFirstChild("ActiveMissions")
+        if not activeMissions then return nil end
+        for _, v in pairs(activeMissions:GetDescendants()) do
+            if v:IsA("ProximityPrompt") and v.ActionText == "Issue Traffic Ticket" then
+                local promptPart = v.Parent
+                if promptPart and promptPart:IsA("BasePart") then
+                    local dist = (hrp.Position - promptPart.Position).Magnitude
+                    if dist <= v.MaxActivationDistance + 2 then
+                        return v
+                    end
+                end
+            end
+        end
+        return nil
+    end
+    
+    print("[Police][Parkir] Mulai orbit memutari objek...")
+    
+    for lap = 1, MAX_LAPS do
+        print("[Police][Parkir] Putaran " .. lap .. "/" .. MAX_LAPS)
+        for i = 0, NUM_POINTS - 1 do
+            if not policeRunning then return false end
+            
+            -- Cek prompt sebelum pindah
+            local prompt = checkForPrompt()
+            if prompt then
+                print("[Police][Parkir] Prompt ditemukan! Berhenti dan hold...")
+                humanoid:MoveTo(hrp.Position) -- stop jalan
+                task.wait(0.3)
+                
+                if fireproximityprompt then
+                    fireproximityprompt(prompt)
+                else
+                    prompt:InputHoldBegin()
+                    task.wait(prompt.HoldDuration + 0.1)
+                    prompt:InputHoldEnd()
+                end
+                task.wait(prompt.HoldDuration + 0.5)
+                print("[Police][Parkir] Traffic Ticket issued!")
+                found = true
+                break
+            end
+            
+            -- Hitung posisi orbit berikutnya
+            local angle = (i / NUM_POINTS) * math.pi * 2
+            local targetPos = Vector3.new(
+                vehiclePos.X + math.cos(angle) * radius,
+                hrp.Position.Y,
+                vehiclePos.Z + math.sin(angle) * radius
+            )
+            
+            humanoid:MoveTo(targetPos)
+            
+            -- Tunggu sampai dekat target, sambil terus cek prompt
+            local moveStart = tick()
+            repeat
+                task.wait(0.25)
+                if not policeRunning then return false end
+                
+                -- Cek prompt sambil jalan
+                local promptWhileWalking = checkForPrompt()
+                if promptWhileWalking then
+                    print("[Police][Parkir] Prompt ditemukan sambil jalan! Berhenti dan hold...")
+                    humanoid:MoveTo(hrp.Position)
+                    task.wait(0.3)
+                    
+                    if fireproximityprompt then
+                        fireproximityprompt(promptWhileWalking)
+                    else
+                        promptWhileWalking:InputHoldBegin()
+                        task.wait(promptWhileWalking.HoldDuration + 0.1)
+                        promptWhileWalking:InputHoldEnd()
+                    end
+                    task.wait(promptWhileWalking.HoldDuration + 0.5)
+                    print("[Police][Parkir] Traffic Ticket issued!")
+                    found = true
+                    break
+                end
+            until (hrp.Position - targetPos).Magnitude <= 3 or (tick() - moveStart > 6)
+            
+            if found then break end
+        end
+        if found then break end
+    end
+    
+    -- Unequip BukuTilang
+    local freshChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = freshChar:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:UnequipTools()
+        print("[Police][Parkir] BukuTilang unequipped!")
+    end
+    
+    if found then
+        print("[Police][Parkir] Job PenertibanParkir SELESAI!")
+    else
+        print("[Police][Parkir] Gagal menemukan prompt setelah " .. MAX_LAPS .. " putaran!")
+    end
+    
+    return found
+end
+
+-- =================================================================
 -- MAIN LOGIC
 -- =================================================================
 
@@ -265,16 +472,32 @@ function PoliceModule:Start()
             local motor2 = findVehicle()
             if motor2 then
                 local missionLoc = missionData.missionLocation
-                print("[Police] Tweening ke lokasi misi dengan speed 100...")
-                _tweenVehicle(motor2, CFrame.new(missionLoc.X, missionLoc.Y, missionLoc.Z), 100)
+                -- Hitung posisi tween yang aman (offset dari VehicleObject)
+                local safeLoc = getSafeTweenPosition(Vector3.new(missionLoc.X, missionLoc.Y, missionLoc.Z))
+                print("[Police] Tweening ke lokasi AMAN (offset): " .. tostring(safeLoc))
+                _tweenVehicle(motor2, CFrame.new(safeLoc), 100)
             end
             
             task.wait(0.5)
             if not policeRunning then return end
             
+            -- Turun dari kendaraan
+            print("[Police] Turun dari kendaraan...")
+            jumpAndWait()
+            if not policeRunning then return end
+            
             print("[Police] Sampai di lokasi misi!")
             print("[Police] Mission Type: " .. missionData.missionType)
-            print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+            
+            -- Handle berdasarkan tipe misi
+            if missionData.missionType == "PenertibanParkir" then
+                print("[Police] === AUTO HANDLE: PenertibanParkir ===")
+                handlePenertibanParkir()
+            else
+                -- InsidenMogok atau tipe lain → manual dulu
+                print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
+                print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+            end
             
             -- =========================================================
             -- LOOP: Tunggu CreateMission berikutnya → spawn → tween
@@ -317,12 +540,13 @@ function PoliceModule:Start()
                 task.wait(1)
                 if not policeRunning then break end
                 
-                -- Tween ke lokasi misi baru
+                -- Tween ke lokasi misi baru (dengan offset aman)
                 local motorLoop = findVehicle()
                 if motorLoop then
                     local loc = missionData.missionLocation
-                    print("[Police] Tweening ke lokasi misi baru dengan speed 100...")
-                    _tweenVehicle(motorLoop, CFrame.new(loc.X, loc.Y, loc.Z), 100)
+                    local safeLoc = getSafeTweenPosition(Vector3.new(loc.X, loc.Y, loc.Z))
+                    print("[Police] Tweening ke lokasi AMAN (offset): " .. tostring(safeLoc))
+                    _tweenVehicle(motorLoop, CFrame.new(safeLoc), 100)
                 else
                     print("[Police] Kendaraan tidak ditemukan!")
                 end
@@ -337,7 +561,15 @@ function PoliceModule:Start()
                 
                 print("[Police] Sampai di lokasi misi baru!")
                 print("[Police] Mission Type: " .. missionData.missionType)
-                print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+                
+                -- Handle berdasarkan tipe misi
+                if missionData.missionType == "PenertibanParkir" then
+                    print("[Police] === AUTO HANDLE: PenertibanParkir ===")
+                    handlePenertibanParkir()
+                else
+                    print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
+                    print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+                end
             end
             
             print("[Police] Loop selesai.")
