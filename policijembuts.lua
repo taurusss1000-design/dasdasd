@@ -578,15 +578,20 @@ function PoliceModule:Start()
             print("[Police] Mission Type: " .. missionData.missionType)
             
             -- Handle berdasarkan tipe misi
-            if missionData.missionType == "PenertibanParkir" then
+            local currentType = missionData.missionType
+            local currentCones = missionData.requiredCones
+            -- Clear global missionData SEBELUM handle job, supaya kalau event baru datang pas lagi ngerjain job, gak kelewat!
+            missionData = nil
+            
+            if currentType == "PenertibanParkir" then
                 print("[Police] === AUTO HANDLE: PenertibanParkir ===")
                 handlePenertibanParkir()
-            elseif missionData.missionType == "InsidenMogok" then
+            elseif currentType == "InsidenMogok" then
                 print("[Police] === AUTO HANDLE: InsidenMogok ===")
-                handleInsidenMogok(missionData.requiredCones)
+                handleInsidenMogok(currentCones)
             else
                 -- Tipe lain → manual dulu
-                print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
+                print("[Police] >>> Tipe misi '" .. currentType .. "' belum di-automate <<<")
                 print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
             end
             
@@ -594,9 +599,12 @@ function PoliceModule:Start()
             -- LOOP: Tunggu CreateMission berikutnya → spawn → tween
             -- =========================================================
             while policeRunning do
-                -- Reset missionData, tunggu CreateMission baru
-                missionData = nil
-                print("[Police] Menunggu CreateMission berikutnya...")
+                -- Tunggu CreateMission baru (kalau missionData masih nil)
+                if not missionData then
+                    print("[Police] Menunggu CreateMission berikutnya...")
+                else
+                    print("[Police] Mission baru sudah ada di antrean, lanjut tanpa nunggu!")
+                end
                 
                 local waitStart2 = tick()
                 while policeRunning and not missionData do
@@ -655,14 +663,19 @@ function PoliceModule:Start()
                 print("[Police] Mission Type: " .. missionData.missionType)
                 
                 -- Handle berdasarkan tipe misi
-                if missionData.missionType == "PenertibanParkir" then
+                local loopType = missionData.missionType
+                local loopCones = missionData.requiredCones
+                -- Clear global missionData SEBELUM handle job
+                missionData = nil
+                
+                if loopType == "PenertibanParkir" then
                     print("[Police] === AUTO HANDLE: PenertibanParkir ===")
                     handlePenertibanParkir()
-                elseif missionData.missionType == "InsidenMogok" then
+                elseif loopType == "InsidenMogok" then
                     print("[Police] === AUTO HANDLE: InsidenMogok ===")
-                    handleInsidenMogok(missionData.requiredCones)
+                    handleInsidenMogok(loopCones)
                 else
-                    print("[Police] >>> Tipe misi '" .. missionData.missionType .. "' belum di-automate <<<")
+                    print("[Police] >>> Tipe misi '" .. loopType .. "' belum di-automate <<<")
                     print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
                 end
             end
