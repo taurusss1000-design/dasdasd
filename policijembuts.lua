@@ -117,17 +117,20 @@ end
 -- HELPERS: MISSION HANDLERS
 -- =================================================================
 
--- Cari VehicleObject di ActiveMissions untuk tau posisi & ukuran objek
+-- Cari objek kendaraan di ActiveMissions (MeshPart/BasePart yang bukan "Part"/"TicketAnimation")
 local function findVehicleObject()
     local activeMissions = Workspace:FindFirstChild("ActiveMissions")
     if not activeMissions then return nil end
-    for _, child in pairs(activeMissions:GetDescendants()) do
-        if child:IsA("BasePart") and child.Name == "VehicleObject" then
-            return child
+    for _, lokasi in pairs(activeMissions:GetChildren()) do
+        for _, v in pairs(lokasi:GetDescendants()) do
+            if (v:IsA("MeshPart") or v:IsA("BasePart")) and v.Name ~= "Part" and v.Name ~= "TicketAnimation" then
+                print("[Police] Objek terdeteksi: " .. lokasi.Name .. " | " .. v.Name .. " | " .. tostring(v.Position))
+                return v
+            end
         end
     end
     return nil
- end
+end
 
 -- Hitung posisi tween yang aman (offset dari VehicleObject biar ga nyangkut)
 local function getSafeTweenPosition(missionLoc)
