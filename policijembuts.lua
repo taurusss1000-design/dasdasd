@@ -274,7 +274,73 @@ function PoliceModule:Start()
             
             print("[Police] Sampai di lokasi misi!")
             print("[Police] Mission Type: " .. missionData.missionType)
-            -- TODO: Lanjut handle misi berdasarkan tipe (penertiban parkir / insiden mogok)
+            print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+            
+            -- =========================================================
+            -- LOOP: Tunggu CreateMission berikutnya → spawn → tween
+            -- =========================================================
+            while policeRunning do
+                -- Reset missionData, tunggu CreateMission baru
+                missionData = nil
+                print("[Police] Menunggu CreateMission berikutnya...")
+                
+                local waitStart2 = tick()
+                while policeRunning and not missionData do
+                    task.wait(0.5)
+                    -- Timeout 10 menit (misi manual bisa lama)
+                    if tick() - waitStart2 > 600 then
+                        print("[Police] Timeout 10 menit menunggu mission baru!")
+                        break
+                    end
+                end
+                
+                if not policeRunning then break end
+                if not missionData then
+                    print("[Police] Tidak ada mission baru, berhenti loop.")
+                    break
+                end
+                
+                print("[Police] Mission baru diterima! Type: " .. missionData.missionType)
+                print("[Police] Location: " .. tostring(missionData.missionLocation))
+                
+                -- Spawn kendaraan
+                print("[Police] Spawn Kendaraan untuk ke lokasi misi baru...")
+                pcall(function()
+                    ReplicatedStorage:WaitForChild("SpawnCarEvents"):WaitForChild("SpawnCar"):FireServer(SELECTED_CAR)
+                end)
+                task.wait(5)
+                if not policeRunning then break end
+                
+                -- Naik kendaraan
+                print("[Police] Naik Kendaraan...")
+                rideVehicle()
+                task.wait(1)
+                if not policeRunning then break end
+                
+                -- Tween ke lokasi misi baru
+                local motorLoop = findVehicle()
+                if motorLoop then
+                    local loc = missionData.missionLocation
+                    print("[Police] Tweening ke lokasi misi baru dengan speed 100...")
+                    _tweenVehicle(motorLoop, CFrame.new(loc.X, loc.Y, loc.Z), 100)
+                else
+                    print("[Police] Kendaraan tidak ditemukan!")
+                end
+                
+                task.wait(0.5)
+                if not policeRunning then break end
+                
+                -- Turun dari kendaraan
+                print("[Police] Turun dari kendaraan...")
+                jumpAndWait()
+                if not policeRunning then break end
+                
+                print("[Police] Sampai di lokasi misi baru!")
+                print("[Police] Mission Type: " .. missionData.missionType)
+                print("[Police] >>> KERJAIN MISI MANUAL, script nunggu mission berikutnya... <<<")
+            end
+            
+            print("[Police] Loop selesai.")
         end
     end)
 end
