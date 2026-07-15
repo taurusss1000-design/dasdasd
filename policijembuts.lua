@@ -361,9 +361,10 @@ function PoliceModule:Start()
 
         local motor = findVehicle()
         if motor then
-            print("[Police] Tweening ke lokasi start job dengan speed 100...")
+            local randomSpeed = math.random(100, 150)
+            print("[Police] Tweening ke lokasi start job dengan speed " .. randomSpeed .. "...")
             local tweenLoc = Vector3.new(2836.453857421875, 4.23581600189209, -830.5399169921875)
-            _tweenVehicle(motor, CFrame.new(tweenLoc), 100)
+            _tweenVehicle(motor, CFrame.new(tweenLoc), randomSpeed)
         end
 
         task.wait(0.5)
@@ -472,10 +473,10 @@ function PoliceModule:Start()
             local motor2 = findVehicle()
             if motor2 then
                 local missionLoc = missionData.missionLocation
-                -- Hitung posisi tween yang aman (offset dari VehicleObject)
                 local safeLoc = getSafeTweenPosition(Vector3.new(missionLoc.X, missionLoc.Y, missionLoc.Z))
-                print("[Police] Tweening ke lokasi AMAN (offset): " .. tostring(safeLoc))
-                _tweenVehicle(motor2, CFrame.new(safeLoc), 100)
+                local randomSpeed = math.random(100, 150)
+                print("[Police] Tweening ke lokasi AMAN (offset) speed " .. randomSpeed .. ": " .. tostring(safeLoc))
+                _tweenVehicle(motor2, CFrame.new(safeLoc), randomSpeed)
             end
             
             task.wait(0.5)
@@ -545,8 +546,9 @@ function PoliceModule:Start()
                 if motorLoop then
                     local loc = missionData.missionLocation
                     local safeLoc = getSafeTweenPosition(Vector3.new(loc.X, loc.Y, loc.Z))
-                    print("[Police] Tweening ke lokasi AMAN (offset): " .. tostring(safeLoc))
-                    _tweenVehicle(motorLoop, CFrame.new(safeLoc), 100)
+                    local randomSpeed = math.random(100, 150)
+                    print("[Police] Tweening ke lokasi AMAN (offset) speed " .. randomSpeed .. ": " .. tostring(safeLoc))
+                    _tweenVehicle(motorLoop, CFrame.new(safeLoc), randomSpeed)
                 else
                     print("[Police] Kendaraan tidak ditemukan!")
                 end
