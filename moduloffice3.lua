@@ -582,10 +582,10 @@ local function startOffice()
             -- Math loop
             task.spawn(function()
                 while not stopMath and officeRunning do
-                    task.wait(0.3)
+                    task.wait(1.5)
                     if not officeRunning then break end
                     jawabSoal()
-                    task.wait(math.random(4, 12) / 10)
+                    task.wait(math.random(5, 12) / 10)
                 end
                 print("[Office] Math loop berhenti!")
             end)
