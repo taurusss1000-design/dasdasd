@@ -551,6 +551,45 @@ local function startOffice()
             local playerGui = LocalPlayer:WaitForChild("PlayerGui")
             local WorkGui = playerGui:WaitForChild("WorkGui")
 
+            local function klikTombol(btn)
+                if not btn then return false end
+                local success = false
+
+                if getconnections then
+                    pcall(function()
+                        for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                            if type(conn.Function) == "function" then
+                                task.spawn(conn.Function)
+                                success = true
+                            elseif conn.Fire then
+                                conn:Fire()
+                                success = true
+                            end
+                        end
+                    end)
+                    pcall(function()
+                        for _, conn in ipairs(getconnections(btn.Activated)) do
+                            if type(conn.Function) == "function" then
+                                task.spawn(conn.Function)
+                                success = true
+                            elseif conn.Fire then
+                                conn:Fire()
+                                success = true
+                            end
+                        end
+                    end)
+                end
+
+                if not success and firesignal then
+                    pcall(function() firesignal(btn.MouseButton1Down) end)
+                    pcall(function() firesignal(btn.MouseButton1Click) end)
+                    pcall(function() firesignal(btn.Activated) end)
+                    success = true
+                end
+
+                return success
+            end
+
             local function jawabSoal()
                 if not officeRunning then return end
                 local questionLabel = WorkGui:FindFirstChild("QuestionLabel")
@@ -573,8 +612,9 @@ local function startOffice()
                         print(string.format("[Office] Menunggu %.1fs sebelum klik jawaban %d...", waitTime, jawaban))
                         task.wait(waitTime)
                         if stopMath or not officeRunning then return end
-                        firesignal(btn.MouseButton1Click)
-                        print("[Office] Klik jawaban: " .. jawaban)
+                        
+                        local ok = klikTombol(btn)
+                        print("[Office] Klik jawaban: " .. jawaban .. " | Result: " .. tostring(ok))
                         OfficeModule.lastActivity = tick()
                         return
                     end
@@ -587,7 +627,7 @@ local function startOffice()
                     task.wait(0.3)
                     if not officeRunning then break end
                     jawabSoal()
-                    task.wait(0.5)
+                    task.wait(math.random(4, 12) / 10)
                 end
                 print("[Office] Math loop berhenti!")
             end)
