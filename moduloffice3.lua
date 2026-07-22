@@ -569,7 +569,9 @@ local function startOffice()
                 if not frame then return end
                 for _, btn in pairs(frame:GetChildren()) do
                     if btn:IsA("TextButton") and btn.Visible and tonumber(btn.Text) == jawaban then
-                        task.wait(math.random(8, 25) / 10)
+                        local waitTime = math.random(60, 120) / 10
+                        print(string.format("[Office] Menunggu %.1fs sebelum klik jawaban %d...", waitTime, jawaban))
+                        task.wait(waitTime)
                         if stopMath or not officeRunning then return end
                         firesignal(btn.MouseButton1Click)
                         print("[Office] Klik jawaban: " .. jawaban)
@@ -582,10 +584,10 @@ local function startOffice()
             -- Math loop
             task.spawn(function()
                 while not stopMath and officeRunning do
-                    task.wait(1.5)
+                    task.wait(0.3)
                     if not officeRunning then break end
                     jawabSoal()
-                    task.wait(math.random(5, 12) / 10)
+                    task.wait(0.5)
                 end
                 print("[Office] Math loop berhenti!")
             end)
